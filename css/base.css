@@ -3,21 +3,9 @@
    Base
    ========================================================= */
 
-/* =========================================================
-   FONT
-   ========================================================= */
-
 @import url("https://fonts.googleapis.com/css2?family=Orbitron:wght@500;600;700;800&display=swap");
 
-/* =========================================================
-   TOKENS
-   ========================================================= */
-
 :root {
-  /* -------------------------------------------------------
-     PALETA
-     ------------------------------------------------------- */
-
   --color-background: #040714;
 
   --color-interface: #f7f8ff;
@@ -45,97 +33,77 @@
   --color-mouse-ear-light: #ffb1c5;
   --color-mouse-nose: #ff719d;
 
-  /* =======================================================
-     GRID LÓGICO
-     ======================================================= */
-
   --grid-columns: 10;
   --grid-rows: 22;
-
-  /* =======================================================
-     FRAME
-     ======================================================= */
 
   --board-frame-gap: 10px;
   --board-frame-width: 3px;
 
-  --board-frame-outset: calc(var(--board-frame-gap) + var(--board-frame-width));
-
-  /* =======================================================
-     VIEWPORT
-     ======================================================= */
-
-  --screen-gap-inline: clamp(7px, 1.8vw, 13px);
-
-  --screen-gap-block: clamp(8px, 1.2svh, 12px);
-
-  /* =======================================================
-     HUD — ESTRUTURA
-     ======================================================= */
-
-  --hud-height: clamp(45px, 6svh, 56px);
-
-  --hud-board-gap: clamp(16px, 2svh, 22px);
-
-  /* =======================================================
-     BOARD — LIMITE HORIZONTAL
-     ======================================================= */
-
-  --board-width-limit-x: calc(
-    100vw - ((var(--screen-gap-inline) + var(--board-frame-outset)) * 2)
+  --board-frame-outset: calc(
+    var(--board-frame-gap) + var(--board-frame-width)
   );
 
-  /* =======================================================
-     BOARD — LIMITE VERTICAL
-     ======================================================= */
+  --screen-gap-inline: clamp(7px, 1.8vw, 13px);
+  --screen-gap-block: clamp(8px, 1.2svh, 12px);
+
+  --hud-height: clamp(45px, 6svh, 56px);
+  --hud-board-gap: clamp(16px, 2svh, 22px);
+
+  --board-max-width: 430px;
+
+  --board-width-limit-x: calc(
+    100vw -
+      ((var(--screen-gap-inline) + var(--board-frame-outset)) * 2)
+  );
 
   --board-height-limit: calc(
-    100svh - (var(--screen-gap-block) * 2) - var(--hud-height) -
-      var(--hud-board-gap) - (var(--board-frame-outset) * 2)
+    100svh -
+      (var(--screen-gap-block) * 2) -
+      var(--hud-height) -
+      var(--hud-board-gap) -
+      (var(--board-frame-outset) * 2)
   );
 
   --board-width-limit-y: calc(
-    var(--board-height-limit) * var(--grid-columns) / var(--grid-rows)
+    var(--board-height-limit) *
+      var(--grid-columns) /
+      var(--grid-rows)
   );
-
-  /* =======================================================
-     BOARD FINAL
-     ======================================================= */
 
   --board-width: min(
     var(--board-width-limit-x),
     var(--board-width-limit-y),
-    430px
+    var(--board-max-width)
   );
 
-  --cell-size: calc(var(--board-width) / var(--grid-columns));
+  --cell-size: calc(
+    var(--board-width) /
+      var(--grid-columns)
+  );
 
-  --board-height: calc(var(--cell-size) * var(--grid-rows));
+  --board-height: calc(
+    var(--cell-size) *
+      var(--grid-rows)
+  );
 
-  /* =======================================================
-     HUD — TIPOGRAFIA RESPONSIVA
-     ======================================================= */
+  --hud-label-size: clamp(
+    9px,
+    calc(var(--board-width) * 0.041),
+    16px
+  );
 
-  /*
-   * A fonte acompanha a largura real do board.
-   *
-   * Se apertar:
-   * diminui.
-   *
-   * Se houver espaço:
-   * cresce.
-   */
+  --hud-value-size: clamp(
+    11px,
+    calc(var(--board-width) * 0.052),
+    24px
+  );
 
-  --hud-label-size: clamp(9px, calc(var(--board-width) * 0.041), 16px);
-
-  --hud-value-size: clamp(11px, calc(var(--board-width) * 0.052), 24px);
-
-  --hud-stat-gap: clamp(3px, calc(var(--board-width) * 0.014), 6px);
+  --hud-stat-gap: clamp(
+    3px,
+    calc(var(--board-width) * 0.014),
+    6px
+  );
 }
-
-/* =========================================================
-   RESET
-   ========================================================= */
 
 *,
 *::before,
@@ -151,193 +119,115 @@ html {
 body {
   width: 100%;
   min-width: 100%;
-
   height: 100%;
   min-height: 100svh;
-
   margin: 0;
-
   overflow: hidden;
-
   color: var(--color-interface);
-
   background: var(--color-background);
-
   font-family: "Orbitron", system-ui, sans-serif;
-
   -webkit-font-smoothing: antialiased;
-
   text-rendering: geometricPrecision;
 }
-
-/* =========================================================
-   SHELL
-   ========================================================= */
 
 .game-shell {
   width: 100%;
   height: 100svh;
-
   display: grid;
-
   justify-items: center;
   align-items: start;
-
-  padding: var(--screen-gap-block)
-    calc(var(--screen-gap-inline) + var(--board-frame-outset));
+  padding:
+    var(--screen-gap-block)
+    calc(
+      var(--screen-gap-inline) +
+        var(--board-frame-outset)
+    );
 }
-
-/* =========================================================
-   STAGE
-   ========================================================= */
 
 .game-stage {
   width: var(--board-width);
-
   display: grid;
-
   grid-template-rows:
     var(--hud-height)
     var(--hud-board-gap)
     var(--board-height);
-
   align-content: start;
-
   min-width: 0;
   min-height: 0;
 }
 
-/* =========================================================
-   HUD
-   ========================================================= */
-
 .game-hud {
   grid-row: 1;
-
   width: 100%;
   height: var(--hud-height);
-
   display: grid;
-
   align-items: center;
-
   padding: 0;
-
   pointer-events: none;
   user-select: none;
 }
 
-/* =========================================================
-   HUD — DISTRIBUIÇÃO
-   ========================================================= */
-
 .game-info {
   width: 100%;
-
   display: grid;
-
-  /*
-   * Três colunas matematicamente iguais.
-   *
-   * Centros:
-   * 16,67% | 50% | 83,33%
-   */
-
   grid-template-columns: repeat(3, minmax(0, 1fr));
-
   align-items: start;
-
   column-gap: 0;
 }
 
-/* =========================================================
-   HUD — BLOCOS
-   ========================================================= */
-
 .game-stat,
 .game-mode {
-  /*
-   * Cada bloco ocupa TODO o seu terço.
-   *
-   * Isso garante que o eixo central de cada bloco
-   * fique exatamente no centro da respectiva coluna.
-   */
-
   width: 100%;
   min-width: 0;
-
   display: grid;
-
   justify-items: center;
-
   row-gap: var(--hud-stat-gap);
-
   text-align: center;
   text-transform: uppercase;
 }
 
-/* =========================================================
-   LABELS
-   ========================================================= */
-
 .game-stat__label,
 .game-mode__label {
   display: block;
-
   width: 100%;
-
   font-size: var(--hud-label-size);
-
   font-weight: 600;
-
   line-height: 1;
-
   letter-spacing: 0.045em;
-
   text-align: center;
-
   white-space: nowrap;
-
   color: var(--color-blue-bright);
 }
-
-/* =========================================================
-   VALORES
-   ========================================================= */
 
 .game-stat__value,
 .game-mode__value {
   display: block;
-
   width: 100%;
-
   font-size: var(--hud-value-size);
-
   font-weight: 600;
-
   line-height: 1;
-
   letter-spacing: 0.025em;
-
   text-align: center;
-
   white-space: nowrap;
-
   color: var(--color-interface);
 }
 
-/* =========================================================
-   BOARD
-   ========================================================= */
-
 .game-board {
   grid-row: 3;
-
   width: var(--board-width);
   height: var(--board-height);
-
   justify-self: center;
   align-self: start;
+}
+
+/* =========================================================
+   PORTRAIT GRANDE
+   ========================================================= */
+
+@media (min-width: 700px) and (orientation: portrait) {
+  :root {
+    --board-max-width: 560px;
+  }
 }
 
 /* =========================================================
@@ -346,17 +236,9 @@ body {
 
 @media (max-height: 700px) {
   :root {
-    /*
-     * Apenas economia vertical.
-     * A geometria horizontal do HUD não muda.
-     */
-
     --board-frame-gap: 7px;
-
     --screen-gap-block: 5px;
-
     --hud-height: 42px;
-
     --hud-board-gap: 12px;
   }
 }
@@ -367,18 +249,10 @@ body {
 
 @media (max-height: 580px) {
   :root {
-    /*
-     * Apenas economia vertical.
-     * A tipografia já responde ao tamanho do board.
-     */
-
     --board-frame-gap: 5px;
-
     --screen-gap-inline: 5px;
     --screen-gap-block: 3px;
-
     --hud-height: 38px;
-
     --hud-board-gap: 9px;
   }
 }
@@ -390,5 +264,21 @@ body {
 @media (max-width: 320px) {
   :root {
     --screen-gap-inline: 4px;
+  }
+}
+
+/* =========================================================
+   VIEWPORT EXTREMAMENTE ALTA E ESTREITA
+   ========================================================= */
+
+/*
+ * Quando a largura é o gargalo inevitável,
+ * preservamos integralmente a proporção 10 × 22
+ * e apenas distribuímos o espaço vertical restante.
+ */
+
+@media (max-aspect-ratio: 2 / 5) {
+  .game-shell {
+    align-items: center;
   }
 }

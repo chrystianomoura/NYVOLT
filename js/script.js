@@ -18,7 +18,28 @@ import { createGameLoop } from "./game/loop.js";
 
 import { getNextHeadPosition, moveSnakeSegments } from "./game/movement.js";
 
+import { initOrientationLock } from "./game/orientation.js";
+
 import { createGameState } from "./game/state.js";
+
+/* =========================================================
+   ORIENTATION
+   ========================================================= */
+
+/*
+ * Em dispositivos touch, tentamos manter
+ * o jogo em orientação portrait.
+ *
+ * Desktop permanece completamente fora
+ * dessa lógica.
+ *
+ * Navegadores podem negar o bloqueio quando
+ * a página não está em fullscreen ou instalada
+ * como PWA. Nesses casos, o jogo continua
+ * funcionando normalmente.
+ */
+
+initOrientationLock();
 
 /* =========================================================
    DOM
