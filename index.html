@@ -20,20 +20,24 @@
              ================================================= -->
 
         <header class="game-hud">
-          <h1 class="game-title">JARAKA</h1>
-
           <div class="game-info" aria-label="Informações da partida">
+            <!-- SCORE -->
+
             <div class="game-stat">
               <span class="game-stat__label">SCORE</span>
 
               <strong class="game-stat__value" id="score">00</strong>
             </div>
 
+            <!-- MODE -->
+
             <div class="game-mode">
               <span class="game-mode__label">MODE</span>
 
               <strong class="game-mode__value" id="game-mode"> NO WALL </strong>
             </div>
+
+            <!-- HIGH SCORE -->
 
             <div class="game-stat game-stat--high-score">
               <span class="game-stat__label">HIGH SCORE</span>
@@ -48,14 +52,13 @@
              ================================================= -->
 
         <section class="game-board" aria-label="Tabuleiro da JARAKA">
-          <!-- ===============================================
-               VIEWPORT INTERNA
-
-               Tudo que pertence ao jogo fica dentro desta
-               camada e é recortado nos limites da arena.
-               =============================================== -->
-
           <div class="game-board__viewport">
+            <!-- =============================================
+                 MARCA D'ÁGUA
+                 ============================================= -->
+
+            <div class="game-board__brand" aria-hidden="true">JARAKA</div>
+
             <!-- =============================================
                  RATO
                  ============================================= -->

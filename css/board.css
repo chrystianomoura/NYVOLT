@@ -2,14 +2,14 @@
    JARAKA — BOARD
    Arena principal
 
-   Direção visual:
-   - superfície tecnológica profunda;
-   - sem grid ou células visíveis;
-   - microtextura procedural;
-   - iluminação atmosférica distribuída;
-   - centro preservado para gameplay;
-   - profundidade nas extremidades;
-   - moldura neon independente.
+   Responsabilidades:
+   - estrutura física da arena;
+   - fundo atmosférico;
+   - microtextura;
+   - assinatura JARAKA;
+   - moldura neon;
+   - clipping dos atores;
+   - hierarquia de camadas.
    ========================================================= */
 
 /* =========================================================
@@ -31,7 +31,7 @@
 
   /*
    * A moldura existe fora da arena.
-   * O clipping pertence somente à viewport interna.
+   * O clipping acontece somente na viewport interna.
    */
 
   overflow: visible;
@@ -52,13 +52,6 @@
   height: 100%;
 
   overflow: hidden;
-
-  /*
-   * SUPERFÍCIE BASE
-   *
-   * A iluminação não possui mais um único foco evidente.
-   * Existem zonas amplas e fracas distribuídas pela arena.
-   */
 
   background:
     radial-gradient(
@@ -105,15 +98,6 @@
 
   inset: 0;
 
-  /*
-   * Duas tramas diagonais extremamente finas formam
-   * uma microestrutura irregular quando sobrepostas.
-   *
-   * Não representam células, caminhos ou coordenadas.
-   * Servem apenas para impedir que grandes áreas escuras
-   * pareçam uma cor chapada.
-   */
-
   background-image:
     repeating-linear-gradient(
       117deg,
@@ -144,6 +128,53 @@
 }
 
 /* =========================================================
+   MARCA JARAKA
+   ========================================================= */
+
+.game-board__brand {
+  position: absolute;
+
+  left: 50%;
+  bottom: 4.5%;
+
+  width: max-content;
+  max-width: 82%;
+
+  margin: 0;
+
+  transform: translateX(-50%);
+
+  font-family: "Orbitron", system-ui, sans-serif;
+
+  font-size: clamp(23px, calc(var(--board-width) * 0.14), 44px);
+
+  font-weight: 700;
+
+  line-height: 1;
+
+  letter-spacing: 0.065em;
+
+  text-align: center;
+  text-transform: uppercase;
+
+  white-space: nowrap;
+
+  /*
+   * Assinatura forte da arena.
+   *
+   * Alta legibilidade sem glow ou text-shadow.
+   * A iluminação continua pertencendo à moldura.
+   */
+
+  color: rgba(91, 132, 205, 0.80);
+
+  pointer-events: none;
+  user-select: none;
+
+  z-index: 3;
+}
+
+/* =========================================================
    PROFUNDIDADE
    ========================================================= */
 
@@ -155,16 +186,6 @@
   inset: 0;
 
   border: 0;
-
-  /*
-   * VINHETA INTERNA
-   *
-   * As laterais e extremidades perdem luminância
-   * gradualmente, fazendo o plano central parecer
-   * ligeiramente mais profundo.
-   *
-   * Nenhuma linha delimita a área jogável.
-   */
 
   background:
     linear-gradient(
@@ -207,13 +228,6 @@
   border: var(--board-frame-width) solid var(--color-board-border);
 
   border-radius: 10px;
-
-  /*
-   * A moldura é o único limite luminoso explícito.
-   *
-   * Glow próximo mais intenso.
-   * Glow distante muito mais difuso.
-   */
 
   box-shadow:
     0 0 0 1px rgba(92, 151, 255, 0.16),
@@ -265,7 +279,8 @@
 .game-board::after,
 .game-board__viewport,
 .game-board__viewport::before,
-.game-board__viewport::after {
+.game-board__viewport::after,
+.game-board__brand {
   box-sizing: border-box;
 }
 
@@ -274,6 +289,12 @@
    ========================================================= */
 
 @media (max-width: 340px) {
+  .game-board__brand {
+    bottom: 4%;
+
+    font-size: clamp(20px, calc(var(--board-width) * 0.135), 32px);
+  }
+
   .game-board::after {
     border-radius: 9px;
 
@@ -293,6 +314,10 @@
 @media (max-height: 560px) {
   .game-board__viewport::before {
     opacity: 0.7;
+  }
+
+  .game-board__brand {
+    bottom: 3.75%;
   }
 
   .game-board::after {
