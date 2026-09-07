@@ -9,7 +9,8 @@
    - sincronização visual das cópias;
    - direção visual dos olhos;
    - formato horizontal/vertical;
-   - animação visual durante curvas.
+   - animação visual durante curvas;
+   - proteção visual nas extremidades da arena.
 
    Este módulo não controla:
    - geometria do corpo;
@@ -17,6 +18,34 @@
    - SVG do corpo;
    - regras de CLASSIC / NO WALL.
    ========================================================= */
+
+import { GRID_COLUMNS, GRID_ROWS } from "../game/config.js";
+
+/* =========================================================
+   AJUSTE VISUAL DE BORDA
+
+   A cabeça possui tamanho visual maior que uma célula:
+
+   --part-size: 1.08
+
+   Portanto, quando seu ponto lógico está exatamente em uma
+   célula externa, parte da geometria pode ultrapassar alguns
+   pixels da viewport e ser recortada.
+
+   Este valor representa 3,5% de uma célula.
+
+   Importante:
+   - não altera posição lógica;
+   - não altera colisão;
+   - não altera grid;
+   - não altera tamanho da cabeça;
+   - não altera movimento da cobra;
+   - atua somente na representação visual.
+   ========================================================= */
+
+const EDGE_SAFE_INSET = 0.035;
+
+const EDGE_EPSILON = 0.0001;
 
 /* =========================================================
    DIREÇÃO
@@ -186,7 +215,7 @@ export function syncHeadClone(
 
   /*
    * Estados das partes internas.
-   *
+
    * eating.js pode alterar classes da face, olhos ou boca.
    * Copiamos apenas className para manter a mesma estrutura
    * visual sem duplicar a lógica de alimentação.
@@ -224,6 +253,77 @@ export function hideHeadClone(headElement) {
 }
 
 /* =========================================================
+   BORDA — COMPARAÇÃO
+   ========================================================= */
+
+function isNear(value, target) {
+  return Math.abs(value - target) <= EDGE_EPSILON;
+}
+
+/* =========================================================
+   BORDA — COMPENSAÇÃO VISUAL
+
+   Só existe compensação quando a coordenada visual está
+   exatamente em uma das células externas da arena.
+
+   Exemplos:
+
+   x = 0
+     → desloca ligeiramente para a direita.
+
+   x = 9
+     → desloca ligeiramente para a esquerda.
+
+   y = 0
+     → desloca ligeiramente para baixo.
+
+   y = 21
+     → desloca ligeiramente para cima.
+
+   Coordenadas virtuais utilizadas durante a travessia
+   toroidal, como:
+
+   x = 9.4
+   x = 9.8
+   x = 10
+   x = -0.6
+
+   não são comprimidas para dentro da arena.
+
+   Assim o movimento de wrap continua livre.
+   ========================================================= */
+
+function getSafeVisualPosition(position) {
+  let x = position.x;
+  let y = position.y;
+
+  /* =====================================================
+     EIXO X
+     ===================================================== */
+
+  if (isNear(x, 0)) {
+    x += EDGE_SAFE_INSET;
+  } else if (isNear(x, GRID_COLUMNS - 1)) {
+    x -= EDGE_SAFE_INSET;
+  }
+
+  /* =====================================================
+     EIXO Y
+     ===================================================== */
+
+  if (isNear(y, 0)) {
+    y += EDGE_SAFE_INSET;
+  } else if (isNear(y, GRID_ROWS - 1)) {
+    y -= EDGE_SAFE_INSET;
+  }
+
+  return {
+    x,
+    y,
+  };
+}
+
+/* =========================================================
    POSIÇÃO
    ========================================================= */
 
@@ -232,9 +332,11 @@ export function setHeadPosition(headElement, position) {
     return;
   }
 
-  headElement.style.setProperty("--visual-x", position.x);
+  const visualPosition = getSafeVisualPosition(position);
 
-  headElement.style.setProperty("--visual-y", position.y);
+  headElement.style.setProperty("--visual-x", visualPosition.x);
+
+  headElement.style.setProperty("--visual-y", visualPosition.y);
 }
 
 /* =========================================================

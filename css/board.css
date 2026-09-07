@@ -197,6 +197,12 @@
 
 /* =========================================================
    PROFUNDIDADE
+
+   Permanece acima do fundo e da identidade da arena,
+   mas abaixo dos atores.
+
+   Isso evita que o sombreado periférico cubra visualmente
+   a cabeça da cobra quando ela passa rente aos limites.
    ========================================================= */
 
 .game-board__viewport::after {
@@ -232,11 +238,17 @@
 
   pointer-events: none;
 
-  z-index: 1000;
+  z-index: 10;
 }
 
 /* =========================================================
    MOLDURA EXTERNA
+
+   A moldura permanece fora da arena e mantém todo o glow,
+   mas agora fica atrás da viewport.
+
+   O clipping continua sendo responsabilidade exclusiva de:
+   .game-board__viewport { overflow: hidden; }
    ========================================================= */
 
 .game-board::after {
@@ -260,7 +272,7 @@
 
   pointer-events: none;
 
-  z-index: 100;
+  z-index: 0;
 }
 
 /* =========================================================
@@ -273,6 +285,9 @@
 
 /* =========================================================
    SNAKE
+
+   Acima da profundidade da arena para que a cabeça
+   permaneça visualmente íntegra até o clipping real.
    ========================================================= */
 
 .snake-layer {
