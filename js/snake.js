@@ -51,6 +51,12 @@ import {
 const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 
 /* =========================================================
+   EVENTOS
+   ========================================================= */
+
+const THEME_CHANGE_EVENT = "jaraka:themechange";
+
+/* =========================================================
    CORPO
    ========================================================= */
 
@@ -88,27 +94,11 @@ const CURVE_JOIN_THRESHOLD = 0.002;
 
 const DISTANCE_EPSILON = 0.000001;
 
-/*
- * Retas pertencentes à região de taper recebem samples
- * fixos ancorados na própria geometria estrutural.
- *
- * Isso mantém a transição de largura suave sem voltar
- * à antiga redistribuição proporcional da cauda inteira.
- */
-
 const TAIL_LINE_SAMPLE_SPACING = 0.22;
 
 /* =========================================================
    WRAP VISUAL
    ========================================================= */
-
-/*
- * Margem usada somente para decidir quais cópias
- * toroidais podem intersectar a viewport.
- *
- * BODY_WIDTH / 2 seria suficiente para o corpo,
- * mas mantemos uma pequena folga geométrica.
- */
 
 const WRAP_RENDER_MARGIN = BODY_WIDTH;
 
@@ -124,6 +114,10 @@ export function createSnakeRenderer({ layer }) {
   let bodySvg = null;
 
   let bodyPath = null;
+
+  let latestBodyLength = 0;
+
+  let latestPathGeometry = null;
 
   /* =======================================================
      CANVAS — CORPO VISUAL
@@ -206,12 +200,6 @@ export function createSnakeRenderer({ layer }) {
 
     const geometryPath = createBodyPath("snake-body-path");
 
-    /*
-     * O path continua existindo somente para eating.js.
-     *
-     * O corpo visível é desenhado exclusivamente no Canvas.
-     */
-
     geometryPath.style.opacity = "0";
 
     geometryPath.style.pointerEvents = "none";
@@ -235,6 +223,10 @@ export function createSnakeRenderer({ layer }) {
     const color = styles.getPropertyValue("--snake-main").trim();
 
     bodyColor = color || "#39ff6a";
+  }
+
+  function handleThemeChange() {
+    resolveBodyColor();
   }
 
   /* =======================================================
@@ -325,6 +317,10 @@ export function createSnakeRenderer({ layer }) {
       bodyResizeObserver = null;
     }
 
+    window.removeEventListener(THEME_CHANGE_EVENT, handleThemeChange);
+
+    window.addEventListener(THEME_CHANGE_EVENT, handleThemeChange);
+
     layer.replaceChildren();
 
     initialSnakeLength = snake.length;
@@ -337,6 +333,10 @@ export function createSnakeRenderer({ layer }) {
 
     lastMorphologyTime = null;
 
+    latestBodyLength = 0;
+
+    latestPathGeometry = null;
+
     centerPointCount = 0;
 
     createBodyCanvas();
@@ -348,13 +348,6 @@ export function createSnakeRenderer({ layer }) {
     headElement = head.element;
 
     headCore = head.core;
-
-    /*
-     * A cópia permanece escondida em partidas normais.
-     *
-     * Ela só aparece durante o frame de travessia
-     * de uma borda.
-     */
 
     const headClone = createHeadClone(layer);
 
@@ -635,10 +628,6 @@ export function createSnakeRenderer({ layer }) {
     ) {
       const segment = segments[segmentIndex];
 
-      /* ===================================================
-         RETA
-         =================================================== */
-
       if (segment.type === "line") {
         if (
           !tailStartInserted &&
@@ -663,10 +652,6 @@ export function createSnakeRenderer({ layer }) {
 
         continue;
       }
-
-      /* ===================================================
-         CURVA QUADRÁTICA
-         =================================================== */
 
       if (segment.type === "quadratic") {
         const samples = segment.samples ?? [];
@@ -744,13 +729,6 @@ export function createSnakeRenderer({ layer }) {
         const progress = clamp((point.distance - tailStart) / tailLength, 0, 1);
 
         width = getTailWidth(progress, visualGrowth);
-
-        /*
-         * Invariante fundamental:
-         *
-         * depois que o taper começa,
-         * a largura nunca aumenta.
-         */
 
         width = Math.min(taperPreviousWidth, width);
       }
@@ -975,15 +953,6 @@ export function createSnakeRenderer({ layer }) {
 
   /* =======================================================
      WRAP — FAIXA DE CÓPIAS
-
-     Queremos apenas os tiles que podem tocar a viewport.
-
-     Para um eixo:
-
-     geometry + offset >= viewportMinimum
-     geometry + offset <= viewportMaximum
-
-     offset sempre é múltiplo do tamanho do grid.
      ======================================================= */
 
   function getWrapTileRange({ minimum, maximum, viewportSize }) {
@@ -1021,22 +990,6 @@ export function createSnakeRenderer({ layer }) {
 
   /* =======================================================
      WRAP — PROJEÇÕES TOROIDAIS DO CORPO
-
-     O path existe em um plano contínuo.
-
-     Exemplo:
-       9 -> 10 -> 11
-
-     Para a arena 10×22 também desenhamos cópias deslocadas
-     por múltiplos inteiros do tamanho do tabuleiro.
-
-     Assim:
-       10 -> 0
-       11 -> 1
-
-     visualmente.
-
-     O Canvas faz o clipping natural nas bordas da arena.
      ======================================================= */
 
   function renderWrappedBody() {
@@ -1113,17 +1066,6 @@ export function createSnakeRenderer({ layer }) {
 
     bodyContext.fillStyle = bodyColor;
 
-    /*
-     * Em vez de desenhar apenas uma cópia do plano,
-     * projetamos a mesma geometria no toro do tabuleiro.
-     *
-     * Em movimento normal o range normalmente contém
-     * somente o tile principal.
-     *
-     * Perto de uma borda surge automaticamente a cópia
-     * correspondente.
-     */
-
     renderWrappedBody();
   }
 
@@ -1140,18 +1082,7 @@ export function createSnakeRenderer({ layer }) {
 
     const transition = resolveWrapTransition(previousHead, currentHead);
 
-    /* =====================================================
-       TRAVESSIA DE BORDA
-       ===================================================== */
-
     if (transition.crossed) {
-      /*
-       * Durante a travessia, a cabeça principal permanece
-       * no plano virtual contínuo.
-       *
-       * A cópia aparece simultaneamente no lado oposto.
-       */
-
       setHeadPosition(headElement, visualHead);
 
       const clonePosition = {
@@ -1168,29 +1099,6 @@ export function createSnakeRenderer({ layer }) {
 
       return;
     }
-
-    /* =====================================================
-       PROJEÇÃO TOROIDAL DA CABEÇA
-       ===================================================== */
-
-    /*
-     * O path trabalha em um plano virtual contínuo.
-     *
-     * Portanto, depois de atravessar uma borda,
-     * visualHead pode assumir valores como:
-     *
-     * x = 10, 11, 12...
-     * x = -1, -2, -3...
-     *
-     * y = 22, 23, 24...
-     * y = -1, -2, -3...
-     *
-     * A cabeça é um elemento DOM e precisa permanecer
-     * dentro da janela física da arena.
-     *
-     * Projetamos a coordenada virtual para sua posição
-     * toroidal equivalente.
-     */
 
     const projectedHead = {
       x: ((visualHead.x % GRID_COLUMNS) + GRID_COLUMNS) % GRID_COLUMNS,
@@ -1212,31 +1120,9 @@ export function createSnakeRenderer({ layer }) {
       return;
     }
 
-    /*
-     * O tema pode ser alterado depois que
-     * o Canvas já foi criado.
-     *
-     * Por isso sincronizamos a cor do corpo
-     * com --snake-main antes de cada render.
-     *
-     * Assim cabeça, corpo e animação de
-     * alimentação usam sempre a mesma
-     * identidade cromática.
-     */
-
-    resolveBodyColor();
-
     latestSnakeLength = snake.length;
 
-    /*
-     * Cabeça.
-     */
-
     renderHead(snake, previousSnake, progress);
-
-    /*
-     * Corpo.
-     */
 
     const rawPoints = buildBodyPoints(snake, previousSnake, progress);
 
@@ -1244,11 +1130,9 @@ export function createSnakeRenderer({ layer }) {
 
     const pathGeometry = buildRoundedPathGeometry(points);
 
-    /*
-     * O SVG não desenha o corpo.
-     *
-     * Apenas acompanha a geometria para eating.js.
-     */
+    latestPathGeometry = pathGeometry;
+
+    latestBodyLength = pathGeometry?.totalLength ?? 0;
 
     bodyPath.setAttribute("d", pathGeometry.pathData);
 
@@ -1257,6 +1141,41 @@ export function createSnakeRenderer({ layer }) {
     const visualGrowth = updateMorphologyGrowth(snake.length);
 
     renderBodySurface(visualGrowth, pathGeometry);
+  }
+
+  /* =======================================================
+     GEOMETRIA CACHEADA PARA EATING
+     ======================================================= */
+
+  function getCachedBodyLength() {
+    return latestBodyLength;
+  }
+
+  function getCachedBodyPointAtRatio(ratio) {
+    if (!latestPathGeometry) {
+      return null;
+    }
+
+    const totalLength = latestPathGeometry.totalLength;
+
+    if (!Number.isFinite(totalLength) || totalLength <= 0) {
+      return null;
+    }
+
+    const safeRatio = clamp(ratio, 0, 1);
+
+    const distance = totalLength * safeRatio;
+
+    const point = sampleRoundedPathAtLength(latestPathGeometry, distance);
+
+    if (!point || !Number.isFinite(point.x) || !Number.isFinite(point.y)) {
+      return null;
+    }
+
+    return {
+      x: point.x,
+      y: point.y,
+    };
   }
 
   /* =======================================================
@@ -1309,6 +1228,10 @@ export function createSnakeRenderer({ layer }) {
       bodyPath,
       latestSnakeLength,
       index,
+
+      getBodyLength: getCachedBodyLength,
+
+      getBodyPointAtRatio: getCachedBodyPointAtRatio,
     });
   }
 
@@ -1318,6 +1241,11 @@ export function createSnakeRenderer({ layer }) {
       bodyPath,
       latestSnakeLength,
       segmentDelay,
+
+      getBodyLength: getCachedBodyLength,
+
+      getBodyPointAtRatio: getCachedBodyPointAtRatio,
+
       onComplete,
     });
   }
@@ -1343,6 +1271,11 @@ export function createSnakeRenderer({ layer }) {
       bodySvg,
       bodyPath,
       latestSnakeLength,
+
+      getBodyLength: getCachedBodyLength,
+
+      getBodyPointAtRatio: getCachedBodyPointAtRatio,
+
       onMouseEnter,
       onSwallowComplete,
     });

@@ -115,9 +115,8 @@ function getBodyLength({ bodyPath, getCachedLength }) {
   }
 
   /*
-   * Primeira opção:
-   * comprimento produzido pelo renderer
-   * no frame mais recente.
+   * Caminho preferencial:
+   * comprimento calculado pelo próprio renderer.
    */
 
   const cachedLength = getCachedLength?.();
@@ -127,8 +126,10 @@ function getBodyLength({ bodyPath, getCachedLength }) {
   }
 
   /*
-   * Fallback apenas para situações
-   * em que ainda não houve render válido.
+   * Fallback.
+   *
+   * Só deve ser usado caso o renderer ainda não tenha
+   * produzido um comprimento geométrico válido.
    */
 
   try {
@@ -144,25 +145,63 @@ function getBodyLength({ bodyPath, getCachedLength }) {
   return 0;
 }
 
-function getBodyPointAtRatio({ bodyPath, ratio, totalLength }) {
+/* =========================================================
+   PONTO DA DEGLUTIÇÃO
+   ========================================================= */
+
+function getBodyPointAtRatio({
+  bodyPath,
+  ratio,
+  totalLength,
+  getCachedPointAtRatio,
+}) {
+  const safeRatio = clamp(ratio, 0, 1);
+
+  /*
+   * Caminho preferencial.
+   *
+   * O renderer já possui a geometria matemática do corpo.
+   * Se um sampler for fornecido, reutilizamos essa geometria
+   * diretamente sem consultar o SVG.
+   */
+
+  if (typeof getCachedPointAtRatio === "function") {
+    const cachedPoint = getCachedPointAtRatio(safeRatio);
+
+    if (
+      cachedPoint &&
+      Number.isFinite(cachedPoint.x) &&
+      Number.isFinite(cachedPoint.y)
+    ) {
+      return {
+        x: cachedPoint.x,
+        y: cachedPoint.y,
+      };
+    }
+  }
+
+  /*
+   * Fallback SVG.
+   *
+   * Mantido apenas para segurança e compatibilidade.
+   * Depois que snake.js fornecer o sampler matemático,
+   * este caminho deixa de ser usado durante o gameplay.
+   */
+
   if (!bodyPath || !Number.isFinite(totalLength) || totalLength <= 0) {
     return null;
   }
 
-  const safeRatio = clamp(ratio, 0, 1);
-
-  let point = null;
-
   try {
-    point = bodyPath.getPointAtLength(totalLength * safeRatio);
+    const point = bodyPath.getPointAtLength(totalLength * safeRatio);
+
+    return {
+      x: point.x,
+      y: point.y,
+    };
   } catch {
     return null;
   }
-
-  return {
-    x: point.x,
-    y: point.y,
-  };
 }
 
 /* =========================================================
@@ -228,6 +267,7 @@ export function triggerSwallowSegment({
   latestSnakeLength,
   index,
   getBodyLength: getCachedLength,
+  getBodyPointAtRatio: getCachedPointAtRatio,
 }) {
   const bodyCount = Math.max(1, latestSnakeLength - 1);
 
@@ -244,6 +284,7 @@ export function triggerSwallowSegment({
     bodyPath,
     ratio,
     totalLength,
+    getCachedPointAtRatio,
   });
 
   if (!point) {
@@ -279,6 +320,7 @@ export function triggerSwallowWave({
   latestSnakeLength,
   segmentDelay = 92,
   getBodyLength: getCachedLength,
+  getBodyPointAtRatio: getCachedPointAtRatio,
   onComplete,
 } = {}) {
   const bodyCount = Math.max(1, latestSnakeLength - 1);
@@ -305,11 +347,11 @@ export function triggerSwallowWave({
     const ratio = 0.04 + progress * (SWALLOW_END_RATIO - 0.04);
 
     /*
-     * O renderer já calculou
-     * getTotalLength() neste frame.
+     * O comprimento e o ponto podem vir diretamente
+     * da geometria matemática mantida pelo renderer.
      *
-     * Aqui apenas reutilizamos
-     * esse número.
+     * Se o renderer fornecer ambos, nenhum cálculo
+     * geométrico do SVG é necessário neste frame.
      */
 
     const totalLength = getBodyLength({
@@ -321,6 +363,7 @@ export function triggerSwallowWave({
       bodyPath,
       ratio,
       totalLength,
+      getCachedPointAtRatio,
     });
 
     if (point) {
@@ -372,6 +415,7 @@ export function triggerEatingSequence({
   bodyPath,
   latestSnakeLength,
   getBodyLength: getCachedLength,
+  getBodyPointAtRatio: getCachedPointAtRatio,
   onMouseEnter,
   onSwallowComplete,
 } = {}) {
@@ -394,6 +438,8 @@ export function triggerEatingSequence({
       segmentDelay: 92,
 
       getBodyLength: getCachedLength,
+
+      getBodyPointAtRatio: getCachedPointAtRatio,
 
       onComplete: () => {
         onSwallowComplete?.();

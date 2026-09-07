@@ -69,6 +69,19 @@ let masterGain = null;
 
 let isMuted = false;
 
+/*
+ * Osciladores atualmente pertencentes ao efeito TURN.
+ *
+ * O TURN funciona como feedback imediato de input e possui
+ * prioridade baixa. Manter referências explícitas permite:
+ *
+ * - substituir um TURN por outro;
+ * - interromper TURN quando EAT começar;
+ * - evitar empilhamento de osciladores em curvas rápidas.
+ */
+
+const activeTurnSources = new Set();
+
 /* =========================================================
    AUDIO CONTEXT
    ========================================================= */
@@ -170,7 +183,7 @@ function playTone({
   detune = 0,
 }) {
   if (!context) {
-    return;
+    return null;
   }
 
   const oscillator = context.createOscillator();
@@ -195,6 +208,8 @@ function playTone({
   oscillator.start(startTime);
 
   oscillator.stop(startTime + duration + 0.02);
+
+  return oscillator;
 }
 
 /* =========================================================
@@ -213,7 +228,7 @@ function playSweep({
   release,
 }) {
   if (!context) {
-    return;
+    return null;
   }
 
   const oscillator = context.createOscillator();
@@ -241,6 +256,8 @@ function playSweep({
   oscillator.start(startTime);
 
   oscillator.stop(startTime + duration + 0.02);
+
+  return oscillator;
 }
 
 /* =========================================================
@@ -255,7 +272,7 @@ function playNoise({
   highpass = 1200,
 }) {
   if (!context) {
-    return;
+    return null;
   }
 
   const frameCount = Math.max(1, Math.floor(context.sampleRate * duration));
@@ -294,19 +311,82 @@ function playNoise({
   source.start(startTime);
 
   source.stop(startTime + duration + 0.02);
+
+  return source;
+}
+
+/* =========================================================
+   TURN — CONTROLE DE FONTES
+   ========================================================= */
+
+function removeTurnSource(source) {
+  activeTurnSources.delete(source);
+}
+
+function registerTurnSource(source) {
+  if (!source) {
+    return;
+  }
+
+  activeTurnSources.add(source);
+
+  source.addEventListener(
+    "ended",
+    () => {
+      removeTurnSource(source);
+    },
+    {
+      once: true,
+    },
+  );
+}
+
+/*
+ * Encerra imediatamente qualquer TURN ainda ativo.
+ *
+ * stop() pode lançar InvalidStateError caso a fonte já tenha
+ * terminado. Por isso cada parada é protegida.
+ */
+
+function stopActiveTurn() {
+  if (activeTurnSources.size === 0) {
+    return;
+  }
+
+  for (const source of activeTurnSources) {
+    try {
+      source.stop();
+    } catch {
+      // A fonte já terminou.
+    }
+  }
+
+  activeTurnSources.clear();
 }
 
 /* =========================================================
    TURN
 
-   Micro efeito curto usado quando a cobra realmente
-   executa uma mudança de direção.
+   Micro efeito curto usado quando a intenção válida de
+   mudança de direção é aceita.
+
+   O TURN:
+   - responde imediatamente ao input;
+   - não acumula com outro TURN;
+   - pode ser interrompido por eventos de maior prioridade.
    ========================================================= */
 
 function playTurnSound(context) {
+  /*
+   * Uma curva nova substitui qualquer microefeito de curva
+   * anterior ainda tocando.
+   */
+
+  stopActiveTurn();
+
   const now = context.currentTime;
 
-  playTone({
+  const primaryTone = playTone({
     context,
     frequency: NOTES.E5,
     startTime: now,
@@ -317,7 +397,7 @@ function playTurnSound(context) {
     release: 0.035,
   });
 
-  playTone({
+  const accentTone = playTone({
     context,
     frequency: NOTES.A5,
     startTime: now,
@@ -327,6 +407,10 @@ function playTurnSound(context) {
     attack: 0.001,
     release: 0.02,
   });
+
+  registerTurnSource(primaryTone);
+
+  registerTurnSource(accentTone);
 }
 
 /* =========================================================
@@ -363,9 +447,13 @@ function playMenuSound(context) {
    EAT
 
    Pequena assinatura ascendente de recompensa.
+
+   Possui prioridade sobre TURN.
    ========================================================= */
 
 function playEatSound(context) {
+  stopActiveTurn();
+
   const now = context.currentTime;
 
   playSweep({
@@ -414,9 +502,13 @@ function playEatSound(context) {
    - sem prolongamento.
 
    Funciona como ponto inicial da sequência de morte.
+
+   Possui prioridade sobre TURN.
    ========================================================= */
 
 function playHitSound(context) {
+  stopActiveTurn();
+
   const now = context.currentTime;
 
   playSweep({
@@ -447,9 +539,13 @@ function playHitSound(context) {
    RESTART
 
    Pequena frase ascendente.
+
+   Possui prioridade sobre TURN.
    ========================================================= */
 
 function playRestartSound(context) {
+  stopActiveTurn();
+
   const now = context.currentTime;
 
   const sequence = [
@@ -500,9 +596,13 @@ function playRestartSound(context) {
    EXIT
 
    Frase descendente relacionada ao RESTART.
+
+   Possui prioridade sobre TURN.
    ========================================================= */
 
 function playExitSound(context) {
+  stopActiveTurn();
+
   const now = context.currentTime;
 
   const sequence = [
@@ -547,9 +647,13 @@ function playExitSound(context) {
    representa o choque.
 
    A sequência apenas lamenta a derrota.
+
+   Possui prioridade sobre TURN.
    ========================================================= */
 
 function playGameOverSound(context) {
+  stopActiveTurn();
+
   const now = context.currentTime;
 
   playTone({
@@ -617,27 +721,89 @@ const SOUND_PLAYERS = Object.freeze({
 
 export function createSoundController() {
   /* =======================================================
-     PLAY
+     EXECUÇÃO
      ======================================================= */
 
-  async function play(soundName) {
-    if (isMuted) {
-      return;
+  function executeSound(soundName, context) {
+    if (!context || context.state !== "running") {
+      return false;
     }
 
     const soundPlayer = SOUND_PLAYERS[soundName];
 
     if (!soundPlayer) {
-      return;
-    }
-
-    const context = await ensureAudioReady();
-
-    if (!context) {
-      return;
+      return false;
     }
 
     soundPlayer(context);
+
+    return true;
+  }
+
+  /* =======================================================
+     PREPARAÇÃO ASSÍNCRONA
+
+     Só é utilizada quando o AudioContext ainda não está
+     disponível ou precisa ser retomado.
+
+     O caminho normal do gameplay não passa por await.
+     ======================================================= */
+
+  async function playAfterReady(soundName) {
+    const context = await ensureAudioReady();
+
+    if (!context || isMuted) {
+      return;
+    }
+
+    executeSound(soundName, context);
+  }
+
+  /* =======================================================
+     PLAY
+
+     FAST PATH:
+
+     Depois que o AudioContext está desbloqueado e running,
+     o efeito é disparado sincronamente no mesmo fluxo JS que
+     recebeu o comando.
+
+     Isso é especialmente importante para TURN, pois elimina
+     a continuação por Promise/await do caminho normal do
+     feedback de direção.
+     ======================================================= */
+
+  function play(soundName) {
+    if (isMuted) {
+      return;
+    }
+
+    if (!SOUND_PLAYERS[soundName]) {
+      return;
+    }
+
+    /*
+     * Caminho crítico do gameplay.
+     *
+     * Nenhuma Promise.
+     * Nenhum await.
+     * Nenhum microtask intermediário.
+     */
+
+    if (audioContext && audioContext.state === "running") {
+      executeSound(soundName, audioContext);
+
+      return;
+    }
+
+    /*
+     * O contexto ainda não foi criado/desbloqueado.
+     *
+     * Essa situação normalmente ocorre apenas no primeiro
+     * contato do usuário com o sistema de áudio.
+     */
+
+    void playAfterReady(soundName);
   }
 
   /* =======================================================
@@ -646,6 +812,8 @@ export function createSoundController() {
 
   function mute() {
     isMuted = true;
+
+    stopActiveTurn();
 
     if (!masterGain) {
       return;

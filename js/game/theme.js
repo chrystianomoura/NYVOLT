@@ -6,7 +6,8 @@
    - validar temas;
    - aplicar o tema cromático;
    - manter a personagem ativa;
-   - atualizar o nome exibido na arena.
+   - atualizar o nome exibido na arena;
+   - notificar módulos interessados quando o tema mudar.
    ========================================================= */
 
 /* =========================================================
@@ -45,6 +46,12 @@ const CHARACTERS = Object.freeze({
     name: "VERMILLY",
   }),
 });
+
+/* =========================================================
+   EVENTOS
+   ========================================================= */
+
+export const THEME_CHANGE_EVENT = "jaraka:themechange";
 
 /* =========================================================
    VALIDAÇÃO
@@ -97,6 +104,20 @@ function updateCharacterName(theme) {
 }
 
 /* =========================================================
+   EVENTO — ALTERAÇÃO DE TEMA
+   ========================================================= */
+
+function dispatchThemeChange(theme) {
+  window.dispatchEvent(
+    new CustomEvent(THEME_CHANGE_EVENT, {
+      detail: {
+        theme,
+      },
+    }),
+  );
+}
+
+/* =========================================================
    APLICAÇÃO
    ========================================================= */
 
@@ -112,6 +133,8 @@ export function setTheme(theme) {
   document.documentElement.dataset.theme = normalizedTheme;
 
   updateCharacterName(normalizedTheme);
+
+  dispatchThemeChange(normalizedTheme);
 
   return true;
 }
