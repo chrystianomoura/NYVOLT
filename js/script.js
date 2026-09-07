@@ -22,6 +22,21 @@ import { initOrientationLock } from "./game/orientation.js";
 
 import { createGameState } from "./game/state.js";
 
+import { setTheme, THEMES } from "./game/theme.js";
+
+/* =========================================================
+   THEME
+   ========================================================= */
+
+/*
+ * Tema provisório da partida.
+ *
+ * Futuramente este valor virá da tela
+ * de seleção da personagem.
+ */
+
+setTheme(THEMES.VERMILLY);
+
 /* =========================================================
    ORIENTATION
    ========================================================= */

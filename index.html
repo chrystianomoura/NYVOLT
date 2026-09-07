@@ -15,53 +15,45 @@
   <body>
     <main class="game-shell">
       <section class="game-stage" aria-label="JARAKA">
-        <!-- =================================================
-             HUD
-             ================================================= -->
-
         <header class="game-hud">
           <div class="game-info" aria-label="Informações da partida">
-            <!-- SCORE -->
-
             <div class="game-stat">
-              <span class="game-stat__label">SCORE</span>
+              <span class="game-stat__label"> SCORE </span>
 
-              <strong class="game-stat__value" id="score">00</strong>
+              <strong class="game-stat__value" id="score"> 00 </strong>
             </div>
 
-            <!-- MODE -->
-
             <div class="game-mode">
-              <span class="game-mode__label">MODE</span>
+              <span class="game-mode__label"> MODE </span>
 
               <strong class="game-mode__value" id="game-mode"> NO WALL </strong>
             </div>
 
-            <!-- HIGH SCORE -->
-
             <div class="game-stat game-stat--high-score">
-              <span class="game-stat__label">HIGH SCORE</span>
+              <span class="game-stat__label"> HIGH SCORE </span>
 
               <strong class="game-stat__value" id="high-score"> 00 </strong>
             </div>
           </div>
         </header>
 
-        <!-- =================================================
-             BOARD
-             ================================================= -->
-
         <section class="game-board" aria-label="Tabuleiro da JARAKA">
           <div class="game-board__viewport">
-            <!-- =============================================
-                 MARCA D'ÁGUA
-                 ============================================= -->
+            <!-- =================================================
+                 IDENTIDADE DA ARENA
+                 ================================================= -->
 
-            <div class="game-board__brand" aria-hidden="true">JARAKA</div>
+            <div class="game-board__brand" aria-hidden="true">
+              <span class="game-board__brand-title"> JARAKA </span>
 
-            <!-- =============================================
+              <span class="game-board__character-name" id="character-name">
+                AZULLY
+              </span>
+            </div>
+
+            <!-- =================================================
                  RATO
-                 ============================================= -->
+                 ================================================= -->
 
             <div class="mouse-food is-angry" aria-label="Ratinho">
               <div class="mouse-actor">
@@ -99,11 +91,11 @@
               </div>
             </div>
 
-            <!-- =============================================
-                 JARAKA
-                 ============================================= -->
+            <!-- =================================================
+                 COBRA
+                 ================================================= -->
 
-            <div class="snake-layer" aria-label="Verdyka"></div>
+            <div class="snake-layer" aria-label="Personagem da JARAKA"></div>
           </div>
         </section>
       </section>

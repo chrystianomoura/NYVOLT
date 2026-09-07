@@ -1,6 +1,6 @@
 /* =========================================================
    JARAKA — SNAKE EATING
-   Alimentação da Verdyka
+   Alimentação da personagem
 
    Responsabilidades:
    - volume visual da deglutição;
@@ -17,7 +17,7 @@
    ========================================================= */
 
 .snake-swallow-bulge {
-  fill: var(--color-verdyka);
+  fill: var(--snake-main);
 
   pointer-events: none;
 }

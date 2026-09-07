@@ -6,7 +6,7 @@
    - estrutura física da arena;
    - fundo atmosférico;
    - microtextura;
-   - assinatura JARAKA;
+   - identidade JARAKA + personagem;
    - moldura neon;
    - clipping dos atores;
    - hierarquia de camadas.
@@ -28,11 +28,6 @@
   justify-self: center;
 
   flex: 0 0 auto;
-
-  /*
-   * A moldura existe fora da arena.
-   * O clipping acontece somente na viewport interna.
-   */
 
   overflow: visible;
 
@@ -56,32 +51,32 @@
   background:
     radial-gradient(
       ellipse 92% 32% at 50% -7%,
-      rgba(66, 128, 255, 0.085) 0%,
-      rgba(40, 89, 198, 0.038) 38%,
+      var(--arena-light-primary) 0%,
+      var(--arena-light-primary-fade) 38%,
       transparent 74%
     ),
     radial-gradient(
       ellipse 72% 30% at 18% 35%,
-      rgba(31, 78, 179, 0.025) 0%,
+      var(--arena-light-left) 0%,
       transparent 72%
     ),
     radial-gradient(
       ellipse 74% 34% at 86% 61%,
-      rgba(37, 87, 194, 0.026) 0%,
+      var(--arena-light-right) 0%,
       transparent 74%
     ),
     radial-gradient(
       ellipse 96% 32% at 50% 105%,
-      rgba(24, 65, 158, 0.045) 0%,
+      var(--arena-light-bottom) 0%,
       transparent 70%
     ),
     linear-gradient(
       180deg,
-      #061027 0%,
-      #050d21 20%,
-      #040b1d 47%,
-      #040a1b 72%,
-      #030817 100%
+      var(--arena-bg-1) 0%,
+      var(--arena-bg-2) 20%,
+      var(--arena-bg-3) 47%,
+      var(--arena-bg-4) 72%,
+      var(--arena-bg-5) 100%
     );
 
   z-index: 1;
@@ -101,22 +96,22 @@
   background-image:
     repeating-linear-gradient(
       117deg,
-      rgba(119, 177, 255, 0.011) 0,
-      rgba(119, 177, 255, 0.011) 1px,
+      var(--arena-texture-primary) 0,
+      var(--arena-texture-primary) 1px,
       transparent 1px,
       transparent 7px
     ),
     repeating-linear-gradient(
       27deg,
-      rgba(89, 145, 236, 0.007) 0,
-      rgba(89, 145, 236, 0.007) 1px,
+      var(--arena-texture-secondary) 0,
+      var(--arena-texture-secondary) 1px,
       transparent 1px,
       transparent 11px
     ),
     radial-gradient(
       ellipse 62% 42% at 50% 46%,
-      rgba(76, 128, 229, 0.022) 0%,
-      rgba(33, 74, 163, 0.009) 45%,
+      var(--arena-texture-center) 0%,
+      var(--arena-texture-center-fade) 45%,
       transparent 76%
     );
 
@@ -128,50 +123,77 @@
 }
 
 /* =========================================================
-   MARCA JARAKA
+   IDENTIDADE JARAKA
    ========================================================= */
 
 .game-board__brand {
   position: absolute;
 
   left: 50%;
-  bottom: 4.5%;
+  bottom: 3.6%;
 
   width: max-content;
   max-width: 82%;
 
-  margin: 0;
+  display: grid;
+
+  justify-items: center;
+
+  row-gap: clamp(4px, calc(var(--board-width) * 0.012), 7px);
 
   transform: translateX(-50%);
 
   font-family: "Orbitron", system-ui, sans-serif;
-
-  font-size: clamp(23px, calc(var(--board-width) * 0.14), 44px);
-
-  font-weight: 700;
-
-  line-height: 1;
-
-  letter-spacing: 0.065em;
 
   text-align: center;
   text-transform: uppercase;
 
   white-space: nowrap;
 
-  /*
-   * Assinatura forte da arena.
-   *
-   * Alta legibilidade sem glow ou text-shadow.
-   * A iluminação continua pertencendo à moldura.
-   */
-
-  color: rgba(91, 132, 205, 0.80);
-
   pointer-events: none;
   user-select: none;
 
   z-index: 3;
+}
+
+/* =========================================================
+   MARCA PRINCIPAL
+
+   JARAKA utiliza a mesma cor da personagem.
+   A hierarquia é criada pela opacidade,
+   tamanho e peso tipográfico.
+   ========================================================= */
+
+.game-board__brand-title {
+  font-size: clamp(23px, calc(var(--board-width) * 0.14), 44px);
+
+  font-weight: 700;
+
+  line-height: 0.95;
+
+  letter-spacing: 0.065em;
+
+  color: var(--theme-hud);
+
+  opacity: 0.68;
+}
+
+/* =========================================================
+   NOME DA PERSONAGEM
+   ========================================================= */
+
+.game-board__character-name {
+  font-size: clamp(11px, calc(var(--board-width) * 0.046), 17px);
+
+  font-weight: 600;
+
+  line-height: 1;
+
+  letter-spacing: 0.18em;
+
+  color: var(--theme-hud);
+
+  opacity: 0.95;
 }
 
 /* =========================================================
@@ -225,17 +247,17 @@
 
   inset: calc(-1 * var(--board-frame-outset));
 
-  border: var(--board-frame-width) solid var(--color-board-border);
+  border: var(--board-frame-width) solid var(--arena-border);
 
   border-radius: 10px;
 
   box-shadow:
-    0 0 0 1px rgba(92, 151, 255, 0.16),
-    0 0 4px rgba(91, 154, 255, 0.54),
-    0 0 10px rgba(67, 137, 255, 0.3),
-    0 0 22px rgba(49, 113, 246, 0.12),
-    0 0 38px rgba(42, 98, 222, 0.045),
-    inset 0 0 0 1px rgba(177, 210, 255, 0.32);
+    0 0 0 1px var(--arena-frame-line),
+    0 0 4px var(--arena-frame-glow-1),
+    0 0 10px var(--arena-frame-glow-2),
+    0 0 22px var(--arena-frame-glow-3),
+    0 0 38px var(--arena-frame-glow-4),
+    inset 0 0 0 1px var(--arena-frame-inner);
 
   pointer-events: none;
 
@@ -280,7 +302,9 @@
 .game-board__viewport,
 .game-board__viewport::before,
 .game-board__viewport::after,
-.game-board__brand {
+.game-board__brand,
+.game-board__brand-title,
+.game-board__character-name {
   box-sizing: border-box;
 }
 
@@ -290,20 +314,31 @@
 
 @media (max-width: 340px) {
   .game-board__brand {
-    bottom: 4%;
+    bottom: 3.2%;
 
+    row-gap: 3px;
+  }
+
+  .game-board__brand-title {
     font-size: clamp(20px, calc(var(--board-width) * 0.135), 32px);
+  }
+
+  .game-board__character-name {
+    font-size: clamp(9px, calc(var(--board-width) * 0.042), 13px);
+
+    letter-spacing: 0.16em;
   }
 
   .game-board::after {
     border-radius: 9px;
 
     box-shadow:
-      0 0 0 1px rgba(92, 151, 255, 0.14),
-      0 0 4px rgba(91, 154, 255, 0.48),
-      0 0 9px rgba(67, 137, 255, 0.26),
-      0 0 18px rgba(49, 113, 246, 0.1),
-      inset 0 0 0 1px rgba(177, 210, 255, 0.28);
+      0 0 0 1px color-mix(in srgb, var(--arena-frame-line) 87.5%, transparent),
+      0 0 4px color-mix(in srgb, var(--arena-frame-glow-1) 88.89%, transparent),
+      0 0 9px color-mix(in srgb, var(--arena-frame-glow-2) 86.67%, transparent),
+      0 0 18px color-mix(in srgb, var(--arena-frame-glow-3) 83.33%, transparent),
+      inset 0 0 0 1px
+        color-mix(in srgb, var(--arena-frame-inner) 87.5%, transparent);
   }
 }
 
@@ -317,15 +352,16 @@
   }
 
   .game-board__brand {
-    bottom: 3.75%;
+    bottom: 3%;
   }
 
   .game-board::after {
     box-shadow:
-      0 0 0 1px rgba(92, 151, 255, 0.13),
-      0 0 4px rgba(91, 154, 255, 0.42),
-      0 0 8px rgba(67, 137, 255, 0.22),
-      0 0 16px rgba(49, 113, 246, 0.08),
-      inset 0 0 0 1px rgba(177, 210, 255, 0.25);
+      0 0 0 1px color-mix(in srgb, var(--arena-frame-line) 81.25%, transparent),
+      0 0 4px color-mix(in srgb, var(--arena-frame-glow-1) 77.78%, transparent),
+      0 0 8px color-mix(in srgb, var(--arena-frame-glow-2) 73.33%, transparent),
+      0 0 16px color-mix(in srgb, var(--arena-frame-glow-3) 66.67%, transparent),
+      inset 0 0 0 1px
+        color-mix(in srgb, var(--arena-frame-inner) 78.13%, transparent);
   }
 }

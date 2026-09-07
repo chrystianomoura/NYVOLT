@@ -1,0 +1,241 @@
+/* =========================================================
+   JARAKA — THEMES
+   Identidade cromática das personagens
+
+   Cada personagem controla:
+   - cor da cobra;
+   - labels do HUD;
+   - atmosfera interna da arena;
+   - assinatura JARAKA;
+   - moldura da arena;
+   - iluminação da cobra.
+   ========================================================= */
+
+/* =========================================================
+   FALLBACK — AZULLY
+   ========================================================= */
+
+:root {
+  --snake-main: #27c8ff;
+  --snake-highlight: #8be9ff;
+  --snake-shadow: #087dcc;
+
+  --theme-hud: #77b1ff;
+
+  --arena-light-primary: rgba(66, 128, 255, 0.085);
+  --arena-light-primary-fade: rgba(40, 89, 198, 0.038);
+  --arena-light-left: rgba(31, 78, 179, 0.025);
+  --arena-light-right: rgba(37, 87, 194, 0.026);
+  --arena-light-bottom: rgba(24, 65, 158, 0.045);
+
+  --arena-bg-1: #061027;
+  --arena-bg-2: #050d21;
+  --arena-bg-3: #040b1d;
+  --arena-bg-4: #040a1b;
+  --arena-bg-5: #030817;
+
+  --arena-texture-primary: rgba(119, 177, 255, 0.011);
+  --arena-texture-secondary: rgba(89, 145, 236, 0.007);
+  --arena-texture-center: rgba(76, 128, 229, 0.022);
+  --arena-texture-center-fade: rgba(33, 74, 163, 0.009);
+
+  --arena-brand: rgba(91, 132, 205, 0.8);
+
+  --arena-border: #4f8dff;
+  --arena-frame-line: rgba(92, 151, 255, 0.16);
+  --arena-frame-glow-1: rgba(91, 154, 255, 0.54);
+  --arena-frame-glow-2: rgba(67, 137, 255, 0.3);
+  --arena-frame-glow-3: rgba(49, 113, 246, 0.12);
+  --arena-frame-glow-4: rgba(42, 98, 222, 0.045);
+  --arena-frame-inner: rgba(177, 210, 255, 0.32);
+
+  --snake-glow-soft: rgba(39, 200, 255, 0.28);
+  --snake-glow-subtle: rgba(39, 200, 255, 0.12);
+  --snake-glow-strong: rgba(39, 200, 255, 0.32);
+  --snake-glow-deep: rgba(39, 200, 255, 0.13);
+}
+
+/* =========================================================
+   AZULLY
+   ========================================================= */
+
+:root[data-theme="azully"] {
+  --snake-main: #27c8ff;
+  --snake-highlight: #8be9ff;
+  --snake-shadow: #087dcc;
+
+  --theme-hud: #77b1ff;
+
+  --arena-light-primary: rgba(66, 128, 255, 0.085);
+  --arena-light-primary-fade: rgba(40, 89, 198, 0.038);
+  --arena-light-left: rgba(31, 78, 179, 0.025);
+  --arena-light-right: rgba(37, 87, 194, 0.026);
+  --arena-light-bottom: rgba(24, 65, 158, 0.045);
+
+  --arena-bg-1: #061027;
+  --arena-bg-2: #050d21;
+  --arena-bg-3: #040b1d;
+  --arena-bg-4: #040a1b;
+  --arena-bg-5: #030817;
+
+  --arena-texture-primary: rgba(119, 177, 255, 0.011);
+  --arena-texture-secondary: rgba(89, 145, 236, 0.007);
+  --arena-texture-center: rgba(76, 128, 229, 0.022);
+  --arena-texture-center-fade: rgba(33, 74, 163, 0.009);
+
+  --arena-brand: rgba(91, 132, 205, 0.8);
+
+  --arena-border: #4f8dff;
+  --arena-frame-line: rgba(92, 151, 255, 0.16);
+  --arena-frame-glow-1: rgba(91, 154, 255, 0.54);
+  --arena-frame-glow-2: rgba(67, 137, 255, 0.3);
+  --arena-frame-glow-3: rgba(49, 113, 246, 0.12);
+  --arena-frame-glow-4: rgba(42, 98, 222, 0.045);
+  --arena-frame-inner: rgba(177, 210, 255, 0.32);
+
+  --snake-glow-soft: rgba(39, 200, 255, 0.28);
+  --snake-glow-subtle: rgba(39, 200, 255, 0.12);
+  --snake-glow-strong: rgba(39, 200, 255, 0.32);
+  --snake-glow-deep: rgba(39, 200, 255, 0.13);
+}
+
+/* =========================================================
+   VERDYKA
+   ========================================================= */
+
+:root[data-theme="verdyka"] {
+  --snake-main: #39ff6a;
+  --snake-highlight: #8cff63;
+  --snake-shadow: #13c94d;
+
+  --theme-hud: #5cff82;
+
+  --arena-light-primary: rgba(57, 255, 106, 0.075);
+  --arena-light-primary-fade: rgba(28, 181, 78, 0.034);
+  --arena-light-left: rgba(24, 148, 65, 0.023);
+  --arena-light-right: rgba(30, 164, 72, 0.024);
+  --arena-light-bottom: rgba(20, 124, 55, 0.04);
+
+  --arena-bg-1: #071d13;
+  --arena-bg-2: #061810;
+  --arena-bg-3: #05140e;
+  --arena-bg-4: #04110c;
+  --arena-bg-5: #030d09;
+
+  --arena-texture-primary: rgba(92, 255, 130, 0.01);
+  --arena-texture-secondary: rgba(57, 214, 99, 0.007);
+  --arena-texture-center: rgba(54, 218, 96, 0.02);
+  --arena-texture-center-fade: rgba(26, 142, 61, 0.008);
+
+  --arena-brand: rgba(70, 171, 99, 0.78);
+
+  --arena-border: #20d85a;
+  --arena-frame-line: rgba(51, 224, 96, 0.16);
+  --arena-frame-glow-1: rgba(46, 227, 94, 0.52);
+  --arena-frame-glow-2: rgba(37, 199, 80, 0.28);
+  --arena-frame-glow-3: rgba(30, 172, 70, 0.11);
+  --arena-frame-glow-4: rgba(25, 142, 59, 0.042);
+  --arena-frame-inner: rgba(151, 255, 178, 0.3);
+
+  --snake-glow-soft: rgba(57, 255, 106, 0.28);
+  --snake-glow-subtle: rgba(57, 255, 106, 0.12);
+  --snake-glow-strong: rgba(57, 255, 106, 0.32);
+  --snake-glow-deep: rgba(57, 255, 106, 0.13);
+}
+
+/* =========================================================
+   AMARELLOW
+   Amarelo elétrico
+   ========================================================= */
+
+:root[data-theme="amarellow"] {
+  --snake-main: #ffd429;
+  --snake-highlight: #fff685;
+  --snake-shadow: #e5b900;
+
+  --theme-hud: #ffd429;
+
+  --arena-light-primary: rgba(255, 212, 41, 0.075);
+  --arena-light-primary-fade: rgba(255, 212, 41, 0.026);
+  --arena-light-left: rgba(255, 212, 41, 0.018);
+  --arena-light-right: rgba(255, 212, 41, 0.019);
+  --arena-light-bottom: rgba(255, 212, 41, 0.03);
+
+  /*
+   * Fundo deliberadamente quase preto.
+   *
+   * Evitamos marrons e laranjas para que
+   * a identidade permaneça AMARELA,
+   * e não dourada.
+   */
+
+  --arena-bg-1: #171606;
+  --arena-bg-2: #111105;
+  --arena-bg-3: #0c0d05;
+  --arena-bg-4: #090a05;
+  --arena-bg-5: #060704;
+
+  --arena-texture-primary: rgba(255, 226, 72, 0.01);
+  --arena-texture-secondary: rgba(255, 212, 41, 0.006);
+  --arena-texture-center: rgba(255, 212, 41, 0.017);
+  --arena-texture-center-fade: rgba(255, 212, 41, 0.006);
+
+  --arena-brand: rgba(220, 186, 46, 0.8);
+
+  --arena-border: #ffd429;
+  --arena-frame-line: rgba(255, 224, 79, 0.17);
+  --arena-frame-glow-1: rgba(255, 212, 41, 0.52);
+  --arena-frame-glow-2: rgba(255, 212, 41, 0.27);
+  --arena-frame-glow-3: rgba(255, 212, 41, 0.1);
+  --arena-frame-glow-4: rgba(255, 212, 41, 0.04);
+  --arena-frame-inner: rgba(255, 244, 166, 0.3);
+
+  --snake-glow-soft: rgba(255, 212, 41, 0.26);
+  --snake-glow-subtle: rgba(255, 212, 41, 0.11);
+  --snake-glow-strong: rgba(255, 212, 41, 0.3);
+  --snake-glow-deep: rgba(255, 212, 41, 0.12);
+}
+
+/* =========================================================
+   VERMILLY
+   ========================================================= */
+
+:root[data-theme="vermilly"] {
+  --snake-main: #ff3d5a;
+  --snake-highlight: #ff8a9c;
+  --snake-shadow: #c9163b;
+
+  --theme-hud: #ff7187;
+
+  --arena-light-primary: rgba(255, 61, 90, 0.075);
+  --arena-light-primary-fade: rgba(191, 38, 66, 0.034);
+  --arena-light-left: rgba(157, 30, 55, 0.023);
+  --arena-light-right: rgba(177, 34, 61, 0.024);
+  --arena-light-bottom: rgba(134, 25, 48, 0.04);
+
+  --arena-bg-1: #210a10;
+  --arena-bg-2: #1b080e;
+  --arena-bg-3: #16070c;
+  --arena-bg-4: #12060a;
+  --arena-bg-5: #0e0408;
+
+  --arena-texture-primary: rgba(255, 113, 135, 0.01);
+  --arena-texture-secondary: rgba(226, 70, 95, 0.007);
+  --arena-texture-center: rgba(222, 61, 89, 0.02);
+  --arena-texture-center-fade: rgba(151, 30, 54, 0.008);
+
+  --arena-brand: rgba(190, 70, 91, 0.78);
+
+  --arena-border: #ef3655;
+  --arena-frame-line: rgba(255, 72, 102, 0.16);
+  --arena-frame-glow-1: rgba(255, 64, 95, 0.52);
+  --arena-frame-glow-2: rgba(224, 48, 79, 0.28);
+  --arena-frame-glow-3: rgba(190, 38, 67, 0.11);
+  --arena-frame-glow-4: rgba(155, 31, 57, 0.042);
+  --arena-frame-inner: rgba(255, 157, 172, 0.3);
+
+  --snake-glow-soft: rgba(255, 61, 90, 0.28);
+  --snake-glow-subtle: rgba(255, 61, 90, 0.12);
+  --snake-glow-strong: rgba(255, 61, 90, 0.32);
+  --snake-glow-deep: rgba(255, 61, 90, 0.13);
+}

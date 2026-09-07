@@ -206,7 +206,7 @@ export function createSnakeRenderer({ layer }) {
   function resolveBodyColor() {
     const styles = getComputedStyle(layer);
 
-    const color = styles.getPropertyValue("--color-verdyka").trim();
+    const color = styles.getPropertyValue("--snake-main").trim();
 
     bodyColor = color || "#39ff6a";
   }

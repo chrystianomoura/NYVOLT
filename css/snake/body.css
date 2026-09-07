@@ -1,44 +1,43 @@
 /* =========================================================
    JARAKA — SNAKE BODY
+   Estrutura visual do corpo
+
+   Responsabilidades:
+   - camada Canvas do corpo;
+   - camada SVG auxiliar;
+   - organização das camadas da cobra;
+   - integração visual com o sistema de temas.
+
+   A cor efetiva do corpo desenhado no Canvas é resolvida
+   pelo snake.js através de --snake-main.
    ========================================================= */
 
-.snake-layer {
-  position: absolute;
-  inset: 0;
-}
-
 /* =========================================================
-   CANVAS — CORPO VISUAL
+   CANVAS DO CORPO
    ========================================================= */
 
 .snake-body-canvas {
   position: absolute;
-  inset: 0;
 
-  display: block;
+  inset: 0;
 
   width: 100%;
   height: 100%;
 
+  display: block;
+
   pointer-events: none;
 
-  z-index: 2;
+  z-index: 1;
 }
 
 /* =========================================================
-   SVG AUXILIAR
+   SVG DO CORPO
    ========================================================= */
-
-/*
- * O SVG não participa mais da renderização visual da cobra.
- *
- * Ele existe somente como suporte geométrico para eating.js,
- * que ainda utiliza o path para calcular posições ao longo
- * do corpo durante as animações de alimentação.
- */
 
 .snake-body-svg {
   position: absolute;
+
   inset: 0;
 
   width: 100%;
@@ -48,10 +47,33 @@
 
   pointer-events: none;
 
-  z-index: 3;
+  z-index: 2;
 }
+
+/* =========================================================
+   PATH CENTRAL
+   ========================================================= */
 
 .snake-body-path {
   fill: none;
-  stroke: none;
+
+  stroke: var(--snake-main);
+
+  stroke-linecap: round;
+  stroke-linejoin: round;
+
+  vector-effect: non-scaling-stroke;
+
+  filter: drop-shadow(0 0 3px var(--snake-glow-soft))
+    drop-shadow(0 0 7px var(--snake-glow-subtle));
+
+  pointer-events: none;
+}
+
+/* =========================================================
+   CAMADA DA CABEÇA
+   ========================================================= */
+
+.snake-head {
+  z-index: 10;
 }
