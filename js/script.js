@@ -1,4 +1,7 @@
-"use strict";
+/* =========================================================
+   JARAKA — SCRIPT
+   Orquestração principal do jogo
+   ========================================================= */
 
 import { createInputController } from "./input.js";
 
@@ -6,7 +9,7 @@ import { createMouseController } from "./mouse.js";
 
 import { createSnakeRenderer } from "./snake.js";
 
-import { isSamePosition, willHitSelf, willHitWall } from "./game/collision.js";
+import { isSamePosition, willHitSelf } from "./game/collision.js";
 
 import { createDirectionController } from "./game/direction.js";
 
@@ -30,68 +33,70 @@ import { createGameState } from "./game/state.js";
 
 import { setTheme, THEMES } from "./game/theme.js";
 
+import { GAME_MODES, resolveModePosition } from "./game/mode.js";
+
 /* =========================================================
-   THEME
+   TEMA PADRÃO
    ========================================================= */
 
 setTheme(THEMES.AZULLY);
 
 /* =========================================================
-   ORIENTATION
+   ORIENTAÇÃO
    ========================================================= */
 
 initOrientationLock();
 
 /* =========================================================
-   DOM — TELAS
+   DOM — START
    ========================================================= */
 
-const startScreenElement = document.getElementById("start-screen");
-
-const gameStage = document.getElementById("game-stage");
-
-const gameModeValue = document.getElementById("game-mode");
+const startScreenElement = document.querySelector("#start-screen");
 
 /* =========================================================
-   DOM — SCORE
+   DOM — GAME
    ========================================================= */
 
-const scoreElement = document.getElementById("score");
+const gameStage = document.querySelector(".game-stage");
 
-const highScoreElement = document.getElementById("high-score");
+const gameBoard = document.querySelector(".game-board");
+
+const snakeLayer = gameBoard?.querySelector(".snake-layer");
+
+const mouseElement = gameBoard?.querySelector(".mouse-food");
+
+const mouseActor = mouseElement?.querySelector(".mouse-actor");
+
+/* =========================================================
+   DOM — HUD
+   ========================================================= */
+
+const gameModeValue = document.querySelector("#game-mode");
+
+const scoreElement = document.querySelector("#score");
+
+const highScoreElement = document.querySelector("#high-score");
 
 /* =========================================================
    DOM — COUNTDOWN
    ========================================================= */
 
-const countdownElement = document.getElementById("game-countdown");
+const countdownElement = document.querySelector("#game-countdown");
 
-const countdownValue = document.getElementById("game-countdown-value");
+const countdownValueElement = document.querySelector("#game-countdown-value");
 
 /* =========================================================
    DOM — GAME OVER
    ========================================================= */
 
-const gameOverElement = document.getElementById("game-over");
+const gameOverElement = document.querySelector("#game-over");
 
-const gameOverReplayButton = document.getElementById("game-over-replay");
+const gameOverReplayButton = document.querySelector("#game-over-replay");
 
-const gameOverExitButton = document.getElementById("game-over-exit");
-
-/* =========================================================
-   DOM — GAMEPLAY
-   ========================================================= */
-
-const gameBoard = document.querySelector(".game-board");
-
-const snakeLayer = document.querySelector(".snake-layer");
-
-const mouseFood = document.querySelector(".mouse-food");
-
-const mouseActor = mouseFood?.querySelector(".mouse-actor");
+const gameOverExitButton = document.querySelector("#game-over-exit");
 
 /* =========================================================
-   CONFIGURAÇÃO INICIAL
+   ESTADO INICIAL DA COBRA
    ========================================================= */
 
 const initialSnake = [
@@ -109,16 +114,21 @@ const initialDirection = {
 };
 
 /* =========================================================
-   ESTADO DA SESSÃO
+   POSIÇÃO DO RATO
+   ========================================================= */
+
+const mousePosition = {
+  x: 0,
+  y: 0,
+};
+
+/* =========================================================
+   ESTADO DA RODADA
    ========================================================= */
 
 let currentMode = null;
 
 let roundTransitioning = false;
-
-/* =========================================================
-   ESTADO DA RODADA
-   ========================================================= */
 
 let gameState = createGameState({
   initialSnake,
@@ -129,30 +139,41 @@ let growthController = createGrowthController();
 let directionController = createDirectionController(initialDirection);
 
 /* =========================================================
-   POSIÇÃO COMPARTILHADA DO RATO
-   ========================================================= */
-
-const mousePosition = {
-  x: 0,
-  y: 0,
-};
-
-/* =========================================================
-   RENDERERS / CONTROLLERS PERSISTENTES
+   CONTROLADORES FIXOS
    ========================================================= */
 
 const snakeRenderer = createSnakeRenderer({
+  board: gameBoard,
   layer: snakeLayer,
 });
 
 const mouseController = createMouseController({
-  element: mouseFood,
-
-  position: mousePosition,
+  element: mouseElement,
 });
 
+const scoreController = createScoreController({
+  scoreElement,
+  highScoreElement,
+});
+
+/* =========================================================
+   CONTROLADORES MUTÁVEIS
+   ========================================================= */
+
+let inputController = null;
+
+let gameLoop = null;
+
+let gameOverController = null;
+
+let startScreenController = null;
+
+/* =========================================================
+   FOOD
+   ========================================================= */
+
 const foodController = createFoodController({
-  element: mouseFood,
+  element: mouseElement,
 
   actor: mouseActor,
 
@@ -165,23 +186,68 @@ const foodController = createFoodController({
   isGameOver: () => gameState.isGameOver(),
 });
 
-const scoreController = createScoreController({
-  scoreElement,
-
-  highScoreElement,
-});
-
 /* =========================================================
-   REFERÊNCIAS TARDIAS
+   UTILITÁRIO — ESPERA
    ========================================================= */
 
-let inputController = null;
+function wait(milliseconds) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, milliseconds);
+  });
+}
 
-let gameLoop = null;
+/* =========================================================
+   COUNTDOWN
+   ========================================================= */
 
-let startScreenController = null;
+async function runCountdown() {
+  if (!countdownElement || !countdownValueElement) {
+    return;
+  }
 
-let gameOverController = null;
+  countdownElement.hidden = false;
+
+  const steps = [
+    {
+      value: "3",
+      state: "number",
+      duration: 700,
+    },
+    {
+      value: "2",
+      state: "number",
+      duration: 700,
+    },
+    {
+      value: "1",
+      state: "number",
+      duration: 700,
+    },
+    {
+      value: "GO!",
+      state: "go",
+      duration: 620,
+    },
+  ];
+
+  for (const step of steps) {
+    countdownElement.setAttribute("data-state", step.state);
+
+    countdownValueElement.textContent = step.value;
+
+    countdownValueElement.style.animation = "none";
+
+    void countdownValueElement.offsetWidth;
+
+    countdownValueElement.style.animation = "";
+
+    await wait(step.duration);
+  }
+
+  countdownElement.hidden = true;
+
+  countdownElement.removeAttribute("data-state");
+}
 
 /* =========================================================
    ALIMENTAÇÃO
@@ -205,12 +271,53 @@ function startEatingSequence() {
       if (gameState.isGameOver()) {
         return;
       }
+
+      /*
+       * O crescimento lógico já foi aplicado
+       * pelo growthController.
+       *
+       * Aqui termina apenas a sequência visual.
+       */
     },
   });
 }
 
 /* =========================================================
-   MOVIMENTO LÓGICO
+   INPUT — TROCA DE DIREÇÃO
+   ========================================================= */
+
+function handleDirectionChange(candidate) {
+  if (gameState.isGameOver()) {
+    inputController?.unlock();
+
+    return;
+  }
+
+  const result = directionController.queue(candidate);
+
+  if (!result.accepted) {
+    inputController?.unlock();
+
+    return;
+  }
+
+  /*
+   * A direção lógica só será aplicada
+   * no próximo tick.
+   *
+   * A cabeça pode antecipar visualmente
+   * a intenção aceita.
+   */
+
+  snakeRenderer.updateHeadDirection(candidate);
+
+  if (result.turnSide) {
+    snakeRenderer.triggerHeadTurn(result.turnSide);
+  }
+}
+
+/* =========================================================
+   MOVIMENTO
    ========================================================= */
 
 function moveSnake() {
@@ -220,21 +327,66 @@ function moveSnake() {
 
   const snake = gameState.getSnake();
 
+  /*
+   * A direção que estava aguardando na fila
+   * passa a ser a direção lógica deste tick.
+   */
+
   const direction = directionController.applyQueuedDirection();
+
+  /*
+   * Agora uma nova entrada pode ser aceita.
+   */
 
   inputController?.unlock();
 
   const head = snake[0];
 
-  const newHead = getNextHeadPosition(head, direction);
+  /* =======================================================
+     PRÓXIMA POSIÇÃO BRUTA
+     ======================================================= */
 
-  const willEatMouse = isSamePosition(newHead, foodController.getPosition());
+  const rawNextHead = getNextHeadPosition(head, direction);
 
-  if (willHitWall(newHead)) {
+  /* =======================================================
+     REGRA DO MODO
+     ======================================================= */
+
+  const movement = resolveModePosition({
+    position: rawNextHead,
+
+    mode: currentMode,
+  });
+
+  /* =======================================================
+     PAREDE — CLASSIC
+     ======================================================= */
+
+  if (movement.hitWall) {
     gameOverController.end("wall");
 
     return;
   }
+
+  /*
+   * CLASSIC:
+   * posição normal.
+   *
+   * NO WALL:
+   * posição normalizada no lado oposto.
+   */
+
+  const newHead = movement.position;
+
+  /* =======================================================
+     ALIMENTAÇÃO
+     ======================================================= */
+
+  const willEatMouse = isSamePosition(newHead, foodController.getPosition());
+
+  /* =======================================================
+     COLISÃO COM O PRÓPRIO CORPO
+     ======================================================= */
 
   if (
     willHitSelf({
@@ -252,159 +404,63 @@ function moveSnake() {
     return;
   }
 
+  /* =======================================================
+     FILA DE CRESCIMENTO + SCORE
+     ======================================================= */
+
   if (willEatMouse) {
     growthController.queue();
 
     scoreController.increment();
   }
 
+  /* =======================================================
+     SNAPSHOT VISUAL
+     ======================================================= */
+
   gameState.snapshotRenderSnake();
+
+  /* =======================================================
+     MOVIMENTO DOS SEGMENTOS
+     ======================================================= */
 
   const tailBeforeMove = moveSnakeSegments(snake, newHead);
 
+  /* =======================================================
+     CRESCIMENTO LÓGICO
+     ======================================================= */
+
   const didGrow = growthController.applyPendingGrowth(snake, tailBeforeMove);
+
+  /* =======================================================
+     CRESCIMENTO VISUAL
+     ======================================================= */
 
   const renderSnake = growthController.updateVisualGrowth(snake, didGrow);
 
   gameState.setRenderSnake(renderSnake);
 
+  /* =======================================================
+     RENDERER
+     ======================================================= */
+
   snakeRenderer.updateSegmentShapes(snake, direction);
 
   snakeRenderer.updateHeadDirection(direction);
 
-  mouseController.update(snake[0]);
+  /* =======================================================
+     RATO — EXPRESSÃO
+     ======================================================= */
+
+  mouseController.update(newHead, mousePosition);
+
+  /* =======================================================
+     ALIMENTAÇÃO — VISUAL
+     ======================================================= */
 
   if (willEatMouse) {
     startEatingSequence();
   }
-}
-
-/* =========================================================
-   RENDERIZAÇÃO
-   ========================================================= */
-
-function renderGame(progress) {
-  snakeRenderer.render(
-    gameState.getRenderSnake(),
-
-    gameState.getPreviousRenderSnake(),
-
-    progress,
-  );
-}
-
-/* =========================================================
-   FILA DE DIREÇÃO
-   ========================================================= */
-
-function queueDirection(candidate) {
-  if (gameState.isGameOver()) {
-    return false;
-  }
-
-  const result = directionController.queue(candidate);
-
-  if (!result.accepted) {
-    return false;
-  }
-
-  snakeRenderer.updateHeadDirection(candidate);
-
-  snakeRenderer.triggerHeadTurn(result.turnSide);
-
-  return true;
-}
-
-/* =========================================================
-   INPUT
-   ========================================================= */
-
-function handleDirectionChange(candidate) {
-  const accepted = queueDirection(candidate);
-
-  if (!accepted && !gameState.isGameOver()) {
-    inputController?.unlock();
-  }
-}
-
-inputController = createInputController({
-  getDirection: () => directionController.getDirection(),
-
-  onDirectionChange: handleDirectionChange,
-});
-
-/* =========================================================
-   LOOP
-   ========================================================= */
-
-gameLoop = createGameLoop({
-  onMove: moveSnake,
-
-  onRender: renderGame,
-
-  isGameOver: () => gameState.isGameOver(),
-});
-
-/* =========================================================
-   TEMPO
-   ========================================================= */
-
-function wait(duration) {
-  return new Promise((resolve) => {
-    window.setTimeout(resolve, duration);
-  });
-}
-
-/* =========================================================
-   COUNTDOWN — VALOR
-   ========================================================= */
-
-function renderCountdownValue(value, state = "number") {
-  if (!countdownElement || !countdownValue) {
-    return;
-  }
-
-  countdownElement.dataset.state = state;
-
-  countdownValue.textContent = value;
-
-  countdownValue.style.animation = "none";
-
-  void countdownValue.offsetWidth;
-
-  countdownValue.style.animation = "";
-}
-
-/* =========================================================
-   COUNTDOWN
-   ========================================================= */
-
-async function runCountdown() {
-  if (!countdownElement) {
-    return;
-  }
-
-  countdownElement.hidden = false;
-
-  renderCountdownValue("3");
-
-  await wait(750);
-
-  renderCountdownValue("2");
-
-  await wait(750);
-
-  renderCountdownValue("1");
-
-  await wait(750);
-
-  renderCountdownValue("GO!", "go");
-
-  await wait(550);
-
-  countdownElement.hidden = true;
-
-  countdownElement.removeAttribute("data-state");
 }
 
 /* =========================================================
@@ -434,35 +490,28 @@ function prepareRound(mode) {
 
   snakeRenderer.render(
     gameState.getRenderSnake(),
-
     gameState.getPreviousRenderSnake(),
-
     0,
   );
 
   foodController.spawnInitial();
 
+  mouseController.update(gameState.getSnake()[0], mousePosition);
+
   scoreController.startRound(mode);
 
   if (gameModeValue) {
-    gameModeValue.textContent = mode === "classic" ? "CLASSIC" : "NO WALL";
+    gameModeValue.textContent =
+      mode === GAME_MODES.CLASSIC ? "CLASSIC" : "NO WALL";
   }
 }
 
 /* =========================================================
-   REVELAÇÃO DOS ATORES
-   ========================================================= */
-
-function revealActors() {
-  gameStage.classList.remove("game-stage--countdown");
-}
-
-/* =========================================================
-   INÍCIO / REINÍCIO
+   INÍCIO DA PARTIDA
    ========================================================= */
 
 async function startGameplay(mode) {
-  if (roundTransitioning || !mode) {
+  if (roundTransitioning) {
     return;
   }
 
@@ -470,9 +519,9 @@ async function startGameplay(mode) {
 
   currentMode = mode;
 
-  inputController.stop();
+  inputController?.stop();
 
-  gameLoop.stop();
+  gameLoop?.stop();
 
   prepareRound(mode);
 
@@ -480,20 +529,36 @@ async function startGameplay(mode) {
 
   gameStage.classList.remove("game-stage--waiting");
 
-  gameStage.setAttribute("aria-hidden", "false");
-
-  await new Promise((resolve) => {
-    requestAnimationFrame(() => {
-      requestAnimationFrame(resolve);
-    });
-  });
-
   await runCountdown();
 
-  revealActors();
+  gameStage.classList.remove("game-stage--countdown");
 
-  await new Promise((resolve) => {
-    requestAnimationFrame(resolve);
+  /* =======================================================
+     INPUT
+     ======================================================= */
+
+  inputController = createInputController({
+    getDirection: () => directionController.getDirection(),
+
+    onDirectionChange: handleDirectionChange,
+  });
+
+  /* =======================================================
+     LOOP
+     ======================================================= */
+
+  gameLoop = createGameLoop({
+    onMove: moveSnake,
+
+    onRender: (progress) => {
+      snakeRenderer.render(
+        gameState.getRenderSnake(),
+        gameState.getPreviousRenderSnake(),
+        progress,
+      );
+    },
+
+    isGameOver: () => gameState.isGameOver(),
   });
 
   inputController.start();
@@ -504,11 +569,11 @@ async function startGameplay(mode) {
 }
 
 /* =========================================================
-   JOGAR NOVAMENTE
+   REPLAY
    ========================================================= */
 
 function replayGame() {
-  if (!currentMode) {
+  if (!currentMode || roundTransitioning) {
     return;
   }
 
@@ -520,21 +585,15 @@ function replayGame() {
    ========================================================= */
 
 function exitToStartScreen() {
-  if (roundTransitioning) {
-    return;
-  }
+  inputController?.stop();
 
-  inputController.stop();
+  gameLoop?.stop();
 
-  gameLoop.stop();
-
-  gameStage.classList.add("game-stage--waiting");
-
-  gameStage.classList.remove("game-stage--countdown");
-
-  gameStage.setAttribute("aria-hidden", "true");
+  roundTransitioning = false;
 
   gameOverController.reset();
+
+  gameStage.classList.add("game-stage--waiting");
 
   startScreenController.reset();
 
@@ -549,7 +608,6 @@ function exitToStartScreen() {
 
 gameOverController = createGameOverController({
   gameBoard,
-
   gameStage,
 
   overlay: gameOverElement,

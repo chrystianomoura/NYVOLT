@@ -5,6 +5,7 @@
    Responsabilidades:
    - interpolação entre ticks;
    - posição visual da cabeça;
+   - continuidade geométrica através das bordas;
    - posição visual da cauda;
    - travessia ortogonal da cauda em curvas;
    - construção dos pontos do corpo;
@@ -14,7 +15,7 @@
    - geometria amostrável sem consultas ao DOM.
    ========================================================= */
 
-import { EPSILON } from "../game/config.js";
+import { EPSILON, GRID_COLUMNS, GRID_ROWS } from "../game/config.js";
 
 const CORNER_RADIUS = 0.18;
 
@@ -52,6 +53,7 @@ function lerp(start, end, progress) {
 function interpolatePoint(start, end, progress) {
   return {
     x: lerp(start.x, end.x, progress),
+
     y: lerp(start.y, end.y, progress),
   };
 }
@@ -82,12 +84,17 @@ function isOrthogonal(first, second) {
 function toCenter(position) {
   return {
     x: position.x + 0.5,
+
     y: position.y + 0.5,
   };
 }
 
 function getDistance(first, second) {
-  return Math.hypot(second.x - first.x, second.y - first.y);
+  return Math.hypot(
+    second.x - first.x,
+
+    second.y - first.y,
+  );
 }
 
 function getManhattanDistance(first, second) {
@@ -95,17 +102,335 @@ function getManhattanDistance(first, second) {
 }
 
 /* =========================================================
+   GEOMETRIA CONTÍNUA DO WRAP
+
+   O estado lógico da cobra permanece sempre normalizado
+   dentro de 10 × 22.
+
+   O renderer, porém, trabalha em um plano virtual infinito.
+
+   Exemplo horizontal:
+
+   estado lógico:
+   8 -> 9 -> 0 -> 1
+
+   plano virtual:
+   8 -> 9 -> 10 -> 11
+
+   Depois de várias voltas, coordenadas como:
+
+   x = 27
+   x = -13
+   y = 45
+   y = -24
+
+   são perfeitamente válidas no espaço visual.
+
+   O tabuleiro real funciona apenas como uma janela sobre
+   esse plano.
+
+   Isso permite:
+   - múltiplas travessias pelo mesmo lado;
+   - travessias horizontais e verticais combinadas;
+   - corpo ocupando os quatro lados simultaneamente;
+   - cobras longas atravessando vários tiles virtuais.
+   ========================================================= */
+
+/*
+ * Continuidade temporal da cabeça.
+ *
+ * Não basta reconstruir cada tick isoladamente.
+ *
+ * Se fizéssemos isso:
+ *
+ * tick A:
+ * 9 -> 0  =  9 -> 10
+ *
+ * tick B:
+ * 0 -> 1  =  0 -> 1
+ *
+ * o plano virtual saltaria de 10 para 1.
+ *
+ * Em vez disso acumulamos a posição virtual da cabeça:
+ *
+ * 9 -> 10 -> 11 -> 12...
+ *
+ * A posição lógica continua normalizada.
+ */
+
+let continuityInitialized = false;
+
+let lastLogicalHead = null;
+
+let lastVirtualHead = null;
+
+let cachedSnakeReference = null;
+
+let cachedPreviousSnakeReference = null;
+
+let cachedContinuousState = null;
+
+/* =========================================================
+   NORMALIZAÇÃO TOROIDAL
+   ========================================================= */
+
+function wrapCoordinate(value, size) {
+  return ((value % size) + size) % size;
+}
+
+/*
+ * Recebe uma coordenada lógica ou virtual e devolve
+ * a representação equivalente mais próxima de reference.
+ *
+ * Exemplo:
+ *
+ * reference = 9
+ * value     = 0
+ *
+ * resultado = 10
+ *
+ * Mas também funciona depois de várias voltas:
+ *
+ * reference = 29
+ * value     = 0
+ *
+ * resultado = 30
+ */
+
+function liftCoordinateNear(reference, value, size) {
+  const normalized = wrapCoordinate(value, size);
+
+  const tile = Math.round((reference - normalized) / size);
+
+  return normalized + tile * size;
+}
+
+function liftPositionNear(reference, position) {
+  return {
+    x: liftCoordinateNear(reference.x, position.x, GRID_COLUMNS),
+
+    y: liftCoordinateNear(reference.y, position.y, GRID_ROWS),
+  };
+}
+
+/* =========================================================
+   COMPARAÇÃO LÓGICA
+   ========================================================= */
+
+function isSameLogicalPosition(first, second) {
+  if (!first || !second) {
+    return false;
+  }
+
+  return (
+    Math.abs(first.x - second.x) < EPSILON &&
+    Math.abs(first.y - second.y) < EPSILON
+  );
+}
+
+/* =========================================================
+   RESET AUTOMÁTICO DE CONTINUIDADE
+   ========================================================= */
+
+/*
+ * Uma nova rodada começa renderizando current e previous
+ * com a mesma cabeça.
+ *
+ * Esse estado é um ponto seguro para reiniciar o plano
+ * virtual na posição lógica normalizada.
+ *
+ * Também reiniciamos se a cadeia temporal for quebrada,
+ * por exemplo após recriação completa do estado.
+ */
+
+function shouldResetContinuity(currentHead, previousHead) {
+  if (!continuityInitialized) {
+    return true;
+  }
+
+  if (isSameLogicalPosition(currentHead, previousHead)) {
+    return true;
+  }
+
+  if (!isSameLogicalPosition(lastLogicalHead, previousHead)) {
+    return true;
+  }
+
+  return false;
+}
+
+/* =========================================================
+   ÂNCORAS VIRTUAIS DA CABEÇA
+   ========================================================= */
+
+function resolveHeadAnchors(snake, previousSnake) {
+  /*
+   * getVisualHead() e buildBodyPoints() são chamados no
+   * mesmo frame com os mesmos arrays.
+   *
+   * O cache impede que o acumulador avance duas vezes.
+   */
+
+  if (
+    cachedContinuousState &&
+    cachedSnakeReference === snake &&
+    cachedPreviousSnakeReference === previousSnake
+  ) {
+    return cachedContinuousState;
+  }
+
+  const currentHead = snake[0];
+
+  const previousHead = previousSnake?.[0] ?? currentHead;
+
+  let previousVirtualHead;
+
+  if (shouldResetContinuity(currentHead, previousHead)) {
+    previousVirtualHead = {
+      x: previousHead.x,
+
+      y: previousHead.y,
+    };
+  } else {
+    previousVirtualHead = {
+      x: lastVirtualHead.x,
+
+      y: lastVirtualHead.y,
+    };
+  }
+
+  const currentVirtualHead = liftPositionNear(previousVirtualHead, currentHead);
+
+  continuityInitialized = true;
+
+  lastLogicalHead = {
+    x: currentHead.x,
+
+    y: currentHead.y,
+  };
+
+  lastVirtualHead = {
+    x: currentVirtualHead.x,
+
+    y: currentVirtualHead.y,
+  };
+
+  cachedSnakeReference = snake;
+
+  cachedPreviousSnakeReference = previousSnake;
+
+  cachedContinuousState = {
+    currentHead: currentVirtualHead,
+
+    previousHead: previousVirtualHead,
+  };
+
+  return cachedContinuousState;
+}
+
+/* =========================================================
+   RECONSTRUÇÃO CONTÍNUA DO CORPO
+   ========================================================= */
+
+/*
+ * A cabeça define a âncora do tile virtual.
+ *
+ * A partir dela cada segmento é levantado para a cópia
+ * toroidal equivalente mais próxima do segmento anterior.
+ *
+ * Como segmentos consecutivos da Snake são vizinhos no
+ * grid lógico, essa operação reconstrói a centerline
+ * completa sem limite de quantidade de wraps.
+ */
+
+function unwrapSnake(snake, headAnchor) {
+  if (!Array.isArray(snake) || snake.length === 0) {
+    return [];
+  }
+
+  const unwrapped = [
+    {
+      x: headAnchor.x,
+
+      y: headAnchor.y,
+    },
+  ];
+
+  for (let index = 1; index < snake.length; index += 1) {
+    const previous = unwrapped[unwrapped.length - 1];
+
+    const segment = snake[index];
+
+    const virtualPosition = liftPositionNear(previous, segment);
+
+    unwrapped.push(virtualPosition);
+  }
+
+  return unwrapped;
+}
+
+/* =========================================================
+   ESTADOS CONTÍNUOS
+
+   Current e previous precisam existir no MESMO plano
+   virtual durante todo o tick.
+
+   Esse é o ponto que permite combinar:
+
+   lateral -> topo
+   topo -> lateral
+   direita -> esquerda -> direita
+   múltiplas voltas em ambos os eixos
+   ========================================================= */
+
+function getContinuousSnakeStates(snake, previousSnake) {
+  if (!Array.isArray(snake) || snake.length === 0) {
+    return {
+      current: [],
+      previous: [],
+    };
+  }
+
+  const previousSource =
+    Array.isArray(previousSnake) && previousSnake.length > 0
+      ? previousSnake
+      : snake;
+
+  const anchors = resolveHeadAnchors(snake, previousSource);
+
+  const current = unwrapSnake(snake, anchors.currentHead);
+
+  const previous = unwrapSnake(previousSource, anchors.previousHead);
+
+  return {
+    current,
+    previous,
+  };
+}
+
+/* =========================================================
    CABEÇA
    ========================================================= */
 
 export function getVisualHead(snake, previousSnake, progress) {
-  const currentHead = snake[0];
+  if (!Array.isArray(snake) || snake.length === 0) {
+    return {
+      x: 0,
+      y: 0,
+    };
+  }
 
-  const previousHead = previousSnake[0] ?? currentHead;
+  const previousSource =
+    Array.isArray(previousSnake) && previousSnake.length > 0
+      ? previousSnake
+      : snake;
+
+  const anchors = resolveHeadAnchors(snake, previousSource);
 
   return {
-    x: lerp(previousHead.x, currentHead.x, progress),
-    y: lerp(previousHead.y, currentHead.y, progress),
+    x: lerp(anchors.previousHead.x, anchors.currentHead.x, progress),
+
+    y: lerp(anchors.previousHead.y, anchors.currentHead.y, progress),
   };
 }
 
@@ -167,6 +492,7 @@ function findTailCorner(snake, previousSnake, previousTail, currentTail) {
 
   return {
     x: bestCandidate.x,
+
     y: bestCandidate.y,
   };
 }
@@ -183,7 +509,9 @@ function getVisualTailState(snake, previousSnake, progress) {
   if (isOrthogonal(previousTail, currentTail)) {
     return {
       point: interpolatePoint(previousTail, currentTail, progress),
+
       corner: null,
+
       beforeCorner: false,
     };
   }
@@ -198,7 +526,9 @@ function getVisualTailState(snake, previousSnake, progress) {
   if (!corner) {
     return {
       point: interpolatePoint(previousTail, currentTail, progress),
+
       corner: null,
+
       beforeCorner: false,
     };
   }
@@ -213,9 +543,12 @@ function getVisualTailState(snake, previousSnake, progress) {
     return {
       point: {
         x: currentTail.x,
+
         y: currentTail.y,
       },
+
       corner: null,
+
       beforeCorner: false,
     };
   }
@@ -227,7 +560,9 @@ function getVisualTailState(snake, previousSnake, progress) {
 
     return {
       point: interpolatePoint(previousTail, corner, localProgress),
+
       corner,
+
       beforeCorner: true,
     };
   }
@@ -236,9 +571,12 @@ function getVisualTailState(snake, previousSnake, progress) {
     return {
       point: {
         x: currentTail.x,
+
         y: currentTail.y,
       },
+
       corner: null,
+
       beforeCorner: false,
     };
   }
@@ -249,7 +587,9 @@ function getVisualTailState(snake, previousSnake, progress) {
 
   return {
     point: interpolatePoint(corner, currentTail, localProgress),
+
     corner,
+
     beforeCorner: false,
   };
 }
@@ -263,35 +603,56 @@ export function buildBodyPoints(snake, previousSnake, progress) {
     return [];
   }
 
+  /*
+   * Antes de construir o path, transformamos as posições
+   * normalizadas da cobra em uma centerline contínua.
+   *
+   * Em movimentos sem wrap os valores permanecem iguais.
+   *
+   * Portanto todo o restante da geometria continua usando
+   * exatamente o mesmo pipeline.
+   */
+
+  const continuous = getContinuousSnakeStates(snake, previousSnake);
+
+  const currentSnake = continuous.current;
+
+  const previousContinuousSnake = continuous.previous;
+
   const points = [];
 
-  const visualHead = getVisualHead(snake, previousSnake, progress);
+  const currentHead = currentSnake[0];
+
+  const previousHead = previousContinuousSnake[0] ?? currentHead;
+
+  const visualHead = interpolatePoint(previousHead, currentHead, progress);
 
   /*
    * Primeiro ponto:
    * cabeça visual centralizada.
    */
 
-  points.push({
-    x: visualHead.x + 0.5,
-    y: visualHead.y + 0.5,
-  });
+  points.push(toCenter(visualHead));
 
   /*
-   * Corpo lógico.
+   * Corpo lógico transformado para o espaço contínuo.
    *
-   * Já removemos duplicatas enquanto
-   * construímos o array, evitando uma
-   * segunda passagem completa.
+   * Uma cobra atravessando uma borda pode possuir pontos
+   * virtuais como:
+   *
+   * 1, 0, -1, -2
+   *
+   * em vez de:
+   *
+   * 1, 0, 9, 8
+   *
+   * Isso impede linhas atravessando o centro da arena.
    */
 
-  for (let index = 1; index < snake.length; index += 1) {
-    const segment = snake[index];
+  for (let index = 1; index < currentSnake.length; index += 1) {
+    const segment = currentSnake[index];
 
-    const point = {
-      x: segment.x + 0.5,
-      y: segment.y + 0.5,
-    };
+    const point = toCenter(segment);
 
     const previous = points[points.length - 1];
 
@@ -300,14 +661,15 @@ export function buildBodyPoints(snake, previousSnake, progress) {
     }
   }
 
-  if (snake.length > 1) {
-    const tailState = getVisualTailState(snake, previousSnake, progress);
+  if (currentSnake.length > 1) {
+    const tailState = getVisualTailState(
+      currentSnake,
+      previousContinuousSnake,
+      progress,
+    );
 
     if (tailState.corner && tailState.beforeCorner) {
-      const cornerPoint = {
-        x: tailState.corner.x + 0.5,
-        y: tailState.corner.y + 0.5,
-      };
+      const cornerPoint = toCenter(tailState.corner);
 
       const previous = points[points.length - 1];
 
@@ -316,10 +678,7 @@ export function buildBodyPoints(snake, previousSnake, progress) {
       }
     }
 
-    const tailPoint = {
-      x: tailState.point.x + 0.5,
-      y: tailState.point.y + 0.5,
-    };
+    const tailPoint = toCenter(tailState.point);
 
     const previous = points[points.length - 1];
 
@@ -430,6 +789,7 @@ function getCornerGeometry(previous, current, next) {
 
     corner: {
       x: current.x,
+
       y: current.y,
     },
 
@@ -541,7 +901,9 @@ export function buildRoundedPathGeometry(points) {
   if (points.length === 0) {
     return {
       pathData: "",
+
       segments: [],
+
       totalLength: 0,
     };
   }
@@ -566,6 +928,7 @@ export function buildRoundedPathGeometry(points) {
 
   let cursor = {
     x: cursorX,
+
     y: cursorY,
   };
 
@@ -661,6 +1024,7 @@ function sampleQuadraticSegmentAtLength(segment, localLength) {
   if (segment.length <= EPSILON) {
     return {
       x: segment.end.x,
+
       y: segment.end.y,
     };
   }
@@ -692,6 +1056,7 @@ function sampleQuadraticSegmentAtLength(segment, localLength) {
 
   return {
     x: segment.end.x,
+
     y: segment.end.y,
   };
 }
@@ -723,6 +1088,7 @@ export function sampleRoundedPathAtLength(pathGeometry, distance) {
     if (segment.length <= EPSILON) {
       return {
         x: segment.end.x,
+
         y: segment.end.y,
       };
     }
@@ -736,6 +1102,7 @@ export function sampleRoundedPathAtLength(pathGeometry, distance) {
 
   return {
     x: lastSegment.end.x,
+
     y: lastSegment.end.y,
   };
 }

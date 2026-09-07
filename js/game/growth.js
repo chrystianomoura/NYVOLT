@@ -7,13 +7,16 @@
    - aplicar crescimento lógico à cobra;
    - suavizar o crescimento visual da cauda;
    - construir a representação visual da cobra durante
-     a absorção gradual do crescimento.
+     a absorção gradual do crescimento;
+   - preservar continuidade visual durante wrap.
 
    O crescimento visual preserva o sistema aprovado
    de liberação progressiva em 7 ticks.
    ========================================================= */
 
 import { EPSILON, VISUAL_GROWTH_RELEASE_STEP } from "./config.js";
+
+import { getVirtualPosition } from "../snake/wrap.js";
 
 /* =========================================================
    UTILITÁRIOS
@@ -130,6 +133,30 @@ export function createGrowthController() {
      * A fração restante posiciona a ponta
      * entre a célula atual da cauda e a
      * célula imediatamente anterior.
+     *
+     * IMPORTANTE:
+     *
+     * Em NO WALL essas duas células podem
+     * estar em lados opostos do grid.
+     *
+     * Exemplo horizontal:
+     *
+     * tail       = 9
+     * beforeTail = 0
+     *
+     * A interpolação plana seria:
+     *
+     * 9 -> 0
+     *
+     * fazendo a ponta atravessar o tabuleiro
+     * inteiro para trás.
+     *
+     * Primeiro convertemos beforeTail para a
+     * representação virtual adjacente:
+     *
+     * 9 -> 10
+     *
+     * e só então interpolamos.
      */
 
     if (remainingOffset > EPSILON && result.length >= 2) {
@@ -139,10 +166,12 @@ export function createGrowthController() {
 
       const beforeTail = result[tailIndex - 1];
 
-      result[tailIndex] = {
-        x: lerp(tail.x, beforeTail.x, remainingOffset),
+      const virtualBeforeTail = getVirtualPosition(tail, beforeTail);
 
-        y: lerp(tail.y, beforeTail.y, remainingOffset),
+      result[tailIndex] = {
+        x: lerp(tail.x, virtualBeforeTail.x, remainingOffset),
+
+        y: lerp(tail.y, virtualBeforeTail.y, remainingOffset),
       };
     }
 

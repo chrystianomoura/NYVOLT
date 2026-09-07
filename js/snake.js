@@ -8,7 +8,8 @@
      compatibilidade com as animações de alimentação;
    - crescimento morfológico independente do tick;
    - amostragem proporcional global removida;
-   - curvas usam os samples estruturais estáveis do path.js.
+   - curvas usam os samples estruturais estáveis do path.js;
+   - projeção toroidal para travessias NO WALL.
    ========================================================= */
 
 import { GRID_COLUMNS, GRID_ROWS } from "./game/config.js";
@@ -23,10 +24,17 @@ import {
 
 import {
   createHead,
+  createHeadClone,
+  syncHeadClone,
+  showHeadClone,
+  hideHeadClone,
+  setHeadPosition,
   updateHeadShape,
   updateHeadDirection as updateHeadDirectionModule,
   triggerHeadTurn as triggerHeadTurnModule,
 } from "./snake/head.js";
+
+import { resolveWrapTransition } from "./snake/wrap.js";
 
 import {
   triggerBite as triggerBiteModule,
@@ -91,6 +99,20 @@ const DISTANCE_EPSILON = 0.000001;
 const TAIL_LINE_SAMPLE_SPACING = 0.22;
 
 /* =========================================================
+   WRAP VISUAL
+   ========================================================= */
+
+/*
+ * Margem usada somente para decidir quais cópias
+ * toroidais podem intersectar a viewport.
+ *
+ * BODY_WIDTH / 2 seria suficiente para o corpo,
+ * mas mantemos uma pequena folga geométrica.
+ */
+
+const WRAP_RENDER_MARGIN = BODY_WIDTH;
+
+/* =========================================================
    RENDERER
    ========================================================= */
 
@@ -124,6 +146,10 @@ export function createSnakeRenderer({ layer }) {
   let headElement = null;
 
   let headCore = null;
+
+  let headCloneElement = null;
+
+  let headCloneCore = null;
 
   /* =======================================================
      ESTADO
@@ -323,6 +349,21 @@ export function createSnakeRenderer({ layer }) {
 
     headCore = head.core;
 
+    /*
+     * A cópia permanece escondida em partidas normais.
+     *
+     * Ela só aparece durante o frame de travessia
+     * de uma borda.
+     */
+
+    const headClone = createHeadClone(layer);
+
+    headCloneElement = headClone.element;
+
+    headCloneCore = headClone.core;
+
+    hideHeadClone(headCloneElement);
+
     updateSegmentShapes(snake, direction);
 
     updateHeadDirection(direction);
@@ -336,6 +377,8 @@ export function createSnakeRenderer({ layer }) {
     latestSnakeLength = snake.length;
 
     updateHeadShape(headCore, direction);
+
+    updateHeadShape(headCloneCore, direction);
   }
 
   /* =======================================================
@@ -544,6 +587,7 @@ export function createSnakeRenderer({ layer }) {
 
           y: lerp(segment.start.y, segment.end.y, progress),
         },
+
         globalDistance,
       );
     }
@@ -893,6 +937,151 @@ export function createSnakeRenderer({ layer }) {
   }
 
   /* =======================================================
+     WRAP — LIMITES DA GEOMETRIA
+     ======================================================= */
+
+  function getBodyBounds() {
+    if (centerPointCount === 0) {
+      return null;
+    }
+
+    let minimumX = Infinity;
+
+    let maximumX = -Infinity;
+
+    let minimumY = Infinity;
+
+    let maximumY = -Infinity;
+
+    for (let index = 0; index < centerPointCount; index += 1) {
+      const point = centerPoints[index];
+
+      minimumX = Math.min(minimumX, point.x);
+
+      maximumX = Math.max(maximumX, point.x);
+
+      minimumY = Math.min(minimumY, point.y);
+
+      maximumY = Math.max(maximumY, point.y);
+    }
+
+    return {
+      minimumX,
+      maximumX,
+      minimumY,
+      maximumY,
+    };
+  }
+
+  /* =======================================================
+     WRAP — FAIXA DE CÓPIAS
+
+     Queremos apenas os tiles que podem tocar a viewport.
+
+     Para um eixo:
+
+     geometry + offset >= viewportMinimum
+     geometry + offset <= viewportMaximum
+
+     offset sempre é múltiplo do tamanho do grid.
+     ======================================================= */
+
+  function getWrapTileRange({ minimum, maximum, viewportSize }) {
+    const minimumTile = Math.ceil(
+      (-WRAP_RENDER_MARGIN - maximum) / viewportSize,
+    );
+
+    const maximumTile = Math.floor(
+      (viewportSize + WRAP_RENDER_MARGIN - minimum) / viewportSize,
+    );
+
+    return {
+      minimumTile,
+      maximumTile,
+    };
+  }
+
+  /* =======================================================
+     DESENHO DE UMA PROJEÇÃO
+     ======================================================= */
+
+  function drawBodyProjection(offsetX, offsetY) {
+    bodyContext.save();
+
+    bodyContext.translate(offsetX, offsetY);
+
+    buildSurfaceSegments();
+
+    fillCurveJoints();
+
+    fillBodyCaps();
+
+    bodyContext.restore();
+  }
+
+  /* =======================================================
+     WRAP — PROJEÇÕES TOROIDAIS DO CORPO
+
+     O path existe em um plano contínuo.
+
+     Exemplo:
+       9 -> 10 -> 11
+
+     Para a arena 10×22 também desenhamos cópias deslocadas
+     por múltiplos inteiros do tamanho do tabuleiro.
+
+     Assim:
+       10 -> 0
+       11 -> 1
+
+     visualmente.
+
+     O Canvas faz o clipping natural nas bordas da arena.
+     ======================================================= */
+
+  function renderWrappedBody() {
+    const bounds = getBodyBounds();
+
+    if (!bounds) {
+      return;
+    }
+
+    const horizontalRange = getWrapTileRange({
+      minimum: bounds.minimumX,
+
+      maximum: bounds.maximumX,
+
+      viewportSize: GRID_COLUMNS,
+    });
+
+    const verticalRange = getWrapTileRange({
+      minimum: bounds.minimumY,
+
+      maximum: bounds.maximumY,
+
+      viewportSize: GRID_ROWS,
+    });
+
+    for (
+      let tileY = verticalRange.minimumTile;
+      tileY <= verticalRange.maximumTile;
+      tileY += 1
+    ) {
+      for (
+        let tileX = horizontalRange.minimumTile;
+        tileX <= horizontalRange.maximumTile;
+        tileX += 1
+      ) {
+        drawBodyProjection(
+          tileX * GRID_COLUMNS,
+
+          tileY * GRID_ROWS,
+        );
+      }
+    }
+  }
+
+  /* =======================================================
      DESENHO DO CORPO INTEIRO
      ======================================================= */
 
@@ -924,11 +1113,94 @@ export function createSnakeRenderer({ layer }) {
 
     bodyContext.fillStyle = bodyColor;
 
-    buildSurfaceSegments();
+    /*
+     * Em vez de desenhar apenas uma cópia do plano,
+     * projetamos a mesma geometria no toro do tabuleiro.
+     *
+     * Em movimento normal o range normalmente contém
+     * somente o tile principal.
+     *
+     * Perto de uma borda surge automaticamente a cópia
+     * correspondente.
+     */
 
-    fillCurveJoints();
+    renderWrappedBody();
+  }
 
-    fillBodyCaps();
+  /* =======================================================
+     CABEÇA — WRAP VISUAL
+     ======================================================= */
+
+  function renderHead(snake, previousSnake, progress) {
+    const visualHead = getVisualHead(snake, previousSnake, progress);
+
+    const currentHead = snake[0];
+
+    const previousHead = previousSnake?.[0] ?? currentHead;
+
+    const transition = resolveWrapTransition(previousHead, currentHead);
+
+    /* =====================================================
+       TRAVESSIA DE BORDA
+       ===================================================== */
+
+    if (transition.crossed) {
+      /*
+       * Durante a travessia, a cabeça principal permanece
+       * no plano virtual contínuo.
+       *
+       * A cópia aparece simultaneamente no lado oposto.
+       */
+
+      setHeadPosition(headElement, visualHead);
+
+      const clonePosition = {
+        x: visualHead.x + transition.oppositeOffset.x,
+
+        y: visualHead.y + transition.oppositeOffset.y,
+      };
+
+      syncHeadClone(headElement, headCore, headCloneElement, headCloneCore);
+
+      setHeadPosition(headCloneElement, clonePosition);
+
+      showHeadClone(headCloneElement);
+
+      return;
+    }
+
+    /* =====================================================
+       PROJEÇÃO TOROIDAL DA CABEÇA
+       ===================================================== */
+
+    /*
+     * O path trabalha em um plano virtual contínuo.
+     *
+     * Portanto, depois de atravessar uma borda,
+     * visualHead pode assumir valores como:
+     *
+     * x = 10, 11, 12...
+     * x = -1, -2, -3...
+     *
+     * y = 22, 23, 24...
+     * y = -1, -2, -3...
+     *
+     * A cabeça é um elemento DOM e precisa permanecer
+     * dentro da janela física da arena.
+     *
+     * Projetamos a coordenada virtual para sua posição
+     * toroidal equivalente.
+     */
+
+    const projectedHead = {
+      x: ((visualHead.x % GRID_COLUMNS) + GRID_COLUMNS) % GRID_COLUMNS,
+
+      y: ((visualHead.y % GRID_ROWS) + GRID_ROWS) % GRID_ROWS,
+    };
+
+    setHeadPosition(headElement, projectedHead);
+
+    hideHeadClone(headCloneElement);
   }
 
   /* =======================================================
@@ -956,11 +1228,15 @@ export function createSnakeRenderer({ layer }) {
 
     latestSnakeLength = snake.length;
 
-    const visualHead = getVisualHead(snake, previousSnake, progress);
+    /*
+     * Cabeça.
+     */
 
-    headElement.style.setProperty("--visual-x", visualHead.x);
+    renderHead(snake, previousSnake, progress);
 
-    headElement.style.setProperty("--visual-y", visualHead.y);
+    /*
+     * Corpo.
+     */
 
     const rawPoints = buildBodyPoints(snake, previousSnake, progress);
 
@@ -989,10 +1265,14 @@ export function createSnakeRenderer({ layer }) {
 
   function updateHeadDirection(direction) {
     updateHeadDirectionModule(headElement, direction);
+
+    updateHeadDirectionModule(headCloneElement, direction);
   }
 
   function triggerHeadTurn(turnSide) {
     triggerHeadTurnModule(headElement, headCore, turnSide);
+
+    triggerHeadTurnModule(headCloneElement, headCloneCore, turnSide);
   }
 
   /* =======================================================

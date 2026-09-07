@@ -3,24 +3,26 @@
 
    Sequência:
    1. colisão congela a partida;
-   2. cobra e rato permanecem na posição final;
-   3. ambos piscam 3 vezes de forma fluida;
+   2. cobra, rato, SCORE e HIGH SCORE permanecem visíveis;
+   3. os quatro piscam 3 vezes, perfeitamente sincronizados;
    4. ao final exato da terceira piscada:
       - cobra e rato desaparecem;
-      - GAME / OVER aparece imediatamente;
-   5. SCORE e HIGH SCORE recebem um pulso cromático curto.
+      - SCORE e HIGH SCORE permanecem no HUD;
+      - GAME / OVER aparece imediatamente.
 
    Regras:
    - nenhuma animação de saída;
    - nenhuma pausa após a terceira piscada;
-   - nenhuma alteração de geometria dos atores;
+   - nenhuma alteração de geometria;
    - nenhuma alteração cromática durante a morte;
-   - SCORE e HIGH SCORE não mudam de tamanho ou posição;
+   - SCORE e HIGH SCORE permanecem brancos;
    - os dois botões possuem exatamente a mesma geometria.
    ========================================================= */
 
 /* =========================================================
-   SEQUÊNCIA DE MORTE
+   SEQUÊNCIA DE MORTE — ATORES
+
+   Cobra e rato recebem o estado diretamente pelo board.
    ========================================================= */
 
 .game-board[data-game-state="dying"] .snake-layer,
@@ -31,6 +33,27 @@
 }
 
 /* =========================================================
+   SEQUÊNCIA DE MORTE — HUD
+
+   SCORE e HIGH SCORE estão no HUD, fora do game-board.
+
+   :has() permite que o game-stage reconheça que existe
+   dentro dele um game-board no estado "dying".
+
+   Dessa forma os números recebem exatamente:
+   - o mesmo keyframe;
+   - a mesma duração;
+   - o mesmo easing;
+   - o mesmo instante de início
+   dos atores.
+   ========================================================= */
+
+.game-stage:has(.game-board[data-game-state="dying"]) #score,
+.game-stage:has(.game-board[data-game-state="dying"]) #high-score {
+  animation: jaraka-death-blink 1200ms ease-in-out both;
+}
+
+/* =========================================================
    ATORES — GAME OVER FINAL
    ========================================================= */
 
@@ -38,6 +61,24 @@
 .game-board[data-game-state="game-over"] .mouse-food,
 .game-board[data-game-state="game-over"] .mouse-actor {
   visibility: hidden !important;
+}
+
+/* =========================================================
+   SCORE / HIGH SCORE — ESTADO FINAL
+
+   Depois das três piscadas, os valores permanecem
+   normalmente visíveis e brancos.
+
+   Não existe pulso cromático posterior.
+   ========================================================= */
+
+.game-stage:has(.game-board[data-game-state="game-over"]) #score,
+.game-stage:has(.game-board[data-game-state="game-over"]) #high-score {
+  opacity: 1;
+
+  color: #ffffff;
+
+  text-shadow: none;
 }
 
 /* =========================================================
@@ -257,14 +298,20 @@
    1200 ms totais.
    Aproximadamente 400 ms por pulsação.
 
+   Aplicado simultaneamente a:
+   - cobra;
+   - rato;
+   - SCORE;
+   - HIGH SCORE.
+
    Trabalhamos exclusivamente com opacity:
    - sem brightness;
    - sem blur;
    - sem transform;
    - sem alteração de cor.
 
-   Ao atingir 100%, o animationend informa ao JavaScript
-   que a sequência terminou.
+   Ao atingir 100%, o animationend da snake-layer informa
+   ao JavaScript que a sequência terminou.
    ========================================================= */
 
 @keyframes jaraka-death-blink {
@@ -322,47 +369,6 @@
 }
 
 /* =========================================================
-   SCORE / HIGH SCORE — PULSO CROMÁTICO
-
-   Não existe:
-   - scale;
-   - translate;
-   - alteração de layout;
-   - salto;
-   - mudança de tamanho.
-
-   O número permanece exatamente na mesma posição.
-
-   Movimento visual:
-   branco → cor da personagem → branco.
-   ========================================================= */
-
-.game-stage--game-over #score,
-.game-stage--game-over #high-score {
-  animation: jaraka-game-over-score-color 480ms ease-in-out both;
-}
-
-@keyframes jaraka-game-over-score-color {
-  0% {
-    color: #ffffff;
-
-    text-shadow: none;
-  }
-
-  50% {
-    color: var(--theme-color);
-
-    text-shadow: 0 0 6px color-mix(in srgb, var(--theme-color) 38%, transparent);
-  }
-
-  100% {
-    color: #ffffff;
-
-    text-shadow: none;
-  }
-}
-
-/* =========================================================
    VIEWPORT MUITO ESTREITA
    ========================================================= */
 
@@ -408,13 +414,13 @@
 
 @media (prefers-reduced-motion: reduce) {
   .game-board[data-game-state="dying"] .snake-layer,
-  .game-board[data-game-state="dying"] .mouse-food {
+  .game-board[data-game-state="dying"] .mouse-food,
+  .game-stage:has(.game-board[data-game-state="dying"]) #score,
+  .game-stage:has(.game-board[data-game-state="dying"]) #high-score {
     animation: jaraka-death-blink-reduced 180ms ease-out both;
   }
 
-  .game-over__title,
-  .game-stage--game-over #score,
-  .game-stage--game-over #high-score {
+  .game-over__title {
     animation: none;
   }
 }

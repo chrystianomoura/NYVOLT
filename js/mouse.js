@@ -7,8 +7,8 @@
    - controlar as expressões visuais do rato;
    - reagir à aproximação da Jaraka.
 
-   A posição lógica do rato é recebida como referência
-   compartilhada com o foodController.
+   A posição lógica do rato é recebida dinamicamente
+   durante cada atualização visual.
    ========================================================= */
 
 const MOUSE_SCARED_DISTANCE = 3;
@@ -19,15 +19,19 @@ const EXPRESSION_CLASSES = ["is-normal", "is-angry", "is-scared", "is-happy"];
    CONTROLLER
    ========================================================= */
 
-export function createMouseController({ element, position }) {
+export function createMouseController({ element }) {
   /* =======================================================
      DISTÂNCIA
      ======================================================= */
 
-  function getDistanceFrom(snakeHeadPosition) {
-    const horizontalDistance = Math.abs(snakeHeadPosition.x - position.x);
+  function getDistanceFrom(snakeHeadPosition, mousePosition) {
+    if (!snakeHeadPosition || !mousePosition) {
+      return Infinity;
+    }
 
-    const verticalDistance = Math.abs(snakeHeadPosition.y - position.y);
+    const horizontalDistance = Math.abs(snakeHeadPosition.x - mousePosition.x);
+
+    const verticalDistance = Math.abs(snakeHeadPosition.y - mousePosition.y);
 
     return horizontalDistance + verticalDistance;
   }
@@ -50,8 +54,14 @@ export function createMouseController({ element, position }) {
      REAÇÃO À COBRA
      ======================================================= */
 
-  function update(snakeHeadPosition) {
-    const distance = getDistanceFrom(snakeHeadPosition);
+  function update(snakeHeadPosition, mousePosition) {
+    if (!snakeHeadPosition || !mousePosition) {
+      setExpression("angry");
+
+      return;
+    }
+
+    const distance = getDistanceFrom(snakeHeadPosition, mousePosition);
 
     if (distance <= MOUSE_SCARED_DISTANCE) {
       setExpression("scared");
