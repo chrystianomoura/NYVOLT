@@ -158,10 +158,6 @@
 
 /* =========================================================
    MARCA PRINCIPAL
-
-   JARAKA utiliza a mesma cor da personagem.
-   A hierarquia é criada pela opacidade,
-   tamanho e peso tipográfico.
    ========================================================= */
 
 .game-board__brand-title {
@@ -173,27 +169,30 @@
 
   letter-spacing: 0.065em;
 
-  color: var(--theme-hud);
+  color: var(--theme-color);
 
   opacity: 0.68;
 }
 
 /* =========================================================
    NOME DA PERSONAGEM
+
+   Mesma linguagem tipográfica da marca JARAKA.
+   Apenas o tamanho é menor.
    ========================================================= */
 
 .game-board__character-name {
   font-size: clamp(11px, calc(var(--board-width) * 0.046), 17px);
 
-  font-weight: 600;
+  font-weight: 700;
 
-  line-height: 1;
+  line-height: 0.95;
 
-  letter-spacing: 0.18em;
+  letter-spacing: 0.065em;
 
-  color: var(--theme-hud);
+  color: var(--theme-color);
 
-  opacity: 0.95;
+  opacity: 0.68;
 }
 
 /* =========================================================
@@ -325,8 +324,6 @@
 
   .game-board__character-name {
     font-size: clamp(9px, calc(var(--board-width) * 0.042), 13px);
-
-    letter-spacing: 0.16em;
   }
 
   .game-board::after {
