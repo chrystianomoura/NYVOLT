@@ -5,7 +5,8 @@
    Responsabilidades:
    - executar ticks lógicos em intervalo fixo;
    - calcular o progresso visual entre ticks;
-   - coordenar requestAnimationFrame.
+   - coordenar requestAnimationFrame;
+   - iniciar cada execução com relógio limpo.
 
    Este módulo não conhece:
    - cobra;
@@ -18,8 +19,12 @@
 
 import { MOVE_INTERVAL } from "./config.js";
 
+/* =========================================================
+   FACTORY
+   ========================================================= */
+
 export function createGameLoop({ onMove, onRender, isGameOver }) {
-  let lastMoveTime = performance.now();
+  let lastMoveTime = 0;
 
   let animationFrameId = null;
 
@@ -29,28 +34,44 @@ export function createGameLoop({ onMove, onRender, isGameOver }) {
 
   function frame(timestamp) {
     if (isGameOver()) {
+      animationFrameId = null;
+
       return;
     }
+
+    /* -----------------------------------------------------
+       MOVIMENTO LÓGICO
+       ----------------------------------------------------- */
 
     while (timestamp - lastMoveTime >= MOVE_INTERVAL) {
       onMove();
 
       if (isGameOver()) {
+        animationFrameId = null;
+
         return;
       }
 
       lastMoveTime += MOVE_INTERVAL;
     }
 
+    /* -----------------------------------------------------
+       INTERPOLAÇÃO VISUAL
+       ----------------------------------------------------- */
+
     const progress = Math.min((timestamp - lastMoveTime) / MOVE_INTERVAL, 1);
 
     onRender(progress);
+
+    /* -----------------------------------------------------
+       PRÓXIMO FRAME
+       ----------------------------------------------------- */
 
     animationFrameId = requestAnimationFrame(frame);
   }
 
   /* =======================================================
-     CONTROLE
+     START
      ======================================================= */
 
   function start() {
@@ -58,8 +79,26 @@ export function createGameLoop({ onMove, onRender, isGameOver }) {
       return;
     }
 
+    /*
+     * O relógio começa AGORA.
+     *
+     * Tempo passado em:
+     * - tela inicial;
+     * - seleção de personagem;
+     * - seleção de modo;
+     * - countdown;
+     *
+     * não pertence ao tempo da partida.
+     */
+
+    lastMoveTime = performance.now();
+
     animationFrameId = requestAnimationFrame(frame);
   }
+
+  /* =======================================================
+     STOP
+     ======================================================= */
 
   function stop() {
     if (animationFrameId === null) {
@@ -70,6 +109,10 @@ export function createGameLoop({ onMove, onRender, isGameOver }) {
 
     animationFrameId = null;
   }
+
+  /* =======================================================
+     API
+     ======================================================= */
 
   return {
     start,

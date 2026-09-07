@@ -1,0 +1,118 @@
+/* =========================================================
+   JARAKA — COUNTDOWN
+   Contagem regressiva de início da partida
+
+   Regras:
+   - ocupa o centro da arena;
+   - usa a cor da personagem escolhida;
+   - cobra e rato permanecem ocultos durante 3-2-1-GO;
+   - ambos aparecem juntos quando a contagem termina.
+   ========================================================= */
+
+/* =========================================================
+   ATORES OCULTOS DURANTE A CONTAGEM
+   ========================================================= */
+
+.game-stage--countdown .snake-layer,
+.game-stage--countdown .mouse-food {
+  visibility: hidden;
+}
+
+/* =========================================================
+   CONTAINER
+   ========================================================= */
+
+.game-countdown {
+  position: absolute;
+
+  inset: 0;
+
+  display: grid;
+
+  place-items: center;
+
+  pointer-events: none;
+
+  z-index: 900;
+}
+
+.game-countdown[hidden] {
+  display: none;
+}
+
+/* =========================================================
+   VALOR
+   ========================================================= */
+
+.game-countdown__value {
+  display: block;
+
+  min-width: 1ch;
+
+  font-family: "Orbitron", system-ui, sans-serif;
+
+  font-size: clamp(92px, calc(var(--board-width) * 0.42), 170px);
+
+  font-weight: 800;
+
+  line-height: 0.9;
+
+  letter-spacing: 0.015em;
+
+  color: var(--theme-color);
+
+  text-align: center;
+
+  text-shadow:
+    0 0 8px color-mix(in srgb, var(--theme-color) 68%, transparent),
+    0 0 20px color-mix(in srgb, var(--theme-color) 36%, transparent),
+    0 0 46px color-mix(in srgb, var(--theme-color) 16%, transparent);
+
+  animation: jaraka-countdown-pulse 420ms ease-out both;
+}
+
+/* =========================================================
+   GO
+   ========================================================= */
+
+.game-countdown[data-state="go"] .game-countdown__value {
+  font-size: clamp(70px, calc(var(--board-width) * 0.31), 130px);
+
+  letter-spacing: 0.07em;
+}
+
+/* =========================================================
+   ANIMAÇÃO
+   ========================================================= */
+
+@keyframes jaraka-countdown-pulse {
+  0% {
+    opacity: 0;
+
+    transform: scale(1.32);
+  }
+
+  32% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 1;
+
+    transform: scale(1);
+  }
+}
+
+/* =========================================================
+   VIEWPORT BAIXA
+   ========================================================= */
+
+@media (max-height: 560px) {
+  .game-countdown__value {
+    font-size: clamp(78px, calc(var(--board-width) * 0.36), 140px);
+  }
+
+  .game-countdown[data-state="go"] .game-countdown__value {
+    font-size: clamp(62px, calc(var(--board-width) * 0.28), 110px);
+  }
+}

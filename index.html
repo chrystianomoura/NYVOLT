@@ -14,7 +14,131 @@
 
   <body>
     <main class="game-shell">
-      <section class="game-stage" aria-label="JARAKA">
+      <!-- =================================================
+           TELA INICIAL
+           ================================================= -->
+
+      <section
+        class="start-screen"
+        id="start-screen"
+        aria-labelledby="start-title"
+      >
+        <div class="start-screen__content">
+          <header class="start-screen__header">
+            <h1 class="start-screen__title" id="start-title">JARAKA</h1>
+
+            <button class="start-screen__play" id="start-play" type="button">
+              JOGAR
+            </button>
+          </header>
+
+          <!-- =================================================
+               PERSONAGENS
+               ================================================= -->
+
+          <section
+            class="start-screen__step start-screen__step--characters"
+            id="character-step"
+            aria-labelledby="character-step-title"
+            hidden
+          >
+            <h2 class="start-screen__step-title" id="character-step-title">
+              ESCOLHA SUA COBRA
+            </h2>
+
+            <div
+              class="character-grid"
+              role="group"
+              aria-label="Cobras disponíveis"
+            >
+              <button
+                class="character-card"
+                type="button"
+                data-character="amarellow"
+                aria-pressed="false"
+              >
+                <span class="character-card__name"> AMARELLOW </span>
+              </button>
+
+              <button
+                class="character-card"
+                type="button"
+                data-character="azully"
+                aria-pressed="false"
+              >
+                <span class="character-card__name"> AZULLY </span>
+              </button>
+
+              <button
+                class="character-card"
+                type="button"
+                data-character="verdyka"
+                aria-pressed="false"
+              >
+                <span class="character-card__name"> VERDYKA </span>
+              </button>
+
+              <button
+                class="character-card"
+                type="button"
+                data-character="vermilly"
+                aria-pressed="false"
+              >
+                <span class="character-card__name"> VERMILLY </span>
+              </button>
+            </div>
+          </section>
+
+          <!-- =================================================
+               MODOS
+               ================================================= -->
+
+          <section
+            class="start-screen__step start-screen__step--mode"
+            id="mode-step"
+            aria-labelledby="mode-step-title"
+            hidden
+          >
+            <h2
+              class="start-screen__step-title start-screen__step-title--mode"
+              id="mode-step-title"
+            >
+              ESCOLHA O MODO
+            </h2>
+
+            <div class="mode-options" role="group" aria-label="Modos de jogo">
+              <button
+                class="mode-option"
+                type="button"
+                data-mode="classic"
+                aria-pressed="false"
+              >
+                CLASSIC
+              </button>
+
+              <button
+                class="mode-option"
+                type="button"
+                data-mode="no-wall"
+                aria-pressed="false"
+              >
+                NO WALL
+              </button>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <!-- =================================================
+           GAMEPLAY
+           ================================================= -->
+
+      <section
+        class="game-stage game-stage--waiting"
+        id="game-stage"
+        aria-label="JARAKA"
+        aria-hidden="true"
+      >
         <header class="game-hud">
           <div class="game-info" aria-label="Informações da partida">
             <div class="game-stat">
@@ -39,9 +163,9 @@
 
         <section class="game-board" aria-label="Tabuleiro da JARAKA">
           <div class="game-board__viewport">
-            <!-- =================================================
-                 IDENTIDADE DA ARENA
-                 ================================================= -->
+            <!-- =============================================
+                 IDENTIDADE
+                 ============================================= -->
 
             <div class="game-board__brand" aria-hidden="true">
               <span class="game-board__brand-title"> JARAKA </span>
@@ -51,9 +175,25 @@
               </span>
             </div>
 
-            <!-- =================================================
+            <!-- =============================================
+                 COUNTDOWN
+                 ============================================= -->
+
+            <div
+              class="game-countdown"
+              id="game-countdown"
+              aria-live="assertive"
+              aria-atomic="true"
+              hidden
+            >
+              <span class="game-countdown__value" id="game-countdown-value">
+                3
+              </span>
+            </div>
+
+            <!-- =============================================
                  RATO
-                 ================================================= -->
+                 ============================================= -->
 
             <div class="mouse-food is-angry" aria-label="Ratinho">
               <div class="mouse-actor">
@@ -91,9 +231,9 @@
               </div>
             </div>
 
-            <!-- =================================================
+            <!-- =============================================
                  COBRA
-                 ================================================= -->
+                 ============================================= -->
 
             <div class="snake-layer" aria-label="Personagem da JARAKA"></div>
           </div>

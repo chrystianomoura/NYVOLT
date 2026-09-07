@@ -940,6 +940,20 @@ export function createSnakeRenderer({ layer }) {
       return;
     }
 
+    /*
+     * O tema pode ser alterado depois que
+     * o Canvas já foi criado.
+     *
+     * Por isso sincronizamos a cor do corpo
+     * com --snake-main antes de cada render.
+     *
+     * Assim cabeça, corpo e animação de
+     * alimentação usam sempre a mesma
+     * identidade cromática.
+     */
+
+    resolveBodyColor();
+
     latestSnakeLength = snake.length;
 
     const visualHead = getVisualHead(snake, previousSnake, progress);

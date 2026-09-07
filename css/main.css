@@ -3,22 +3,13 @@
    CSS Entry Point
    ========================================================= */
 
-/*
- * Ordem de carregamento:
- *
- * 1. Base global e design tokens estruturais
- * 2. Temas cromáticos das personagens
- * 3. Estrutura visual do tabuleiro
- * 4. Corpo da personagem jogável
- * 5. Cabeça e rosto da personagem jogável
- * 6. Estados e animações de alimentação
- * 7. Alimento/personagem secundário
- */
-
 @import url("./base.css");
 @import url("./themes.css");
 
+@import url("./start-screen.css");
+
 @import url("./board.css");
+@import url("./countdown.css");
 
 @import url("./snake/body.css");
 @import url("./snake/head.css");

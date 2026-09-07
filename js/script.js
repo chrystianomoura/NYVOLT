@@ -1,7 +1,9 @@
 "use strict";
 
 import { createInputController } from "./input.js";
+
 import { createMouseController } from "./mouse.js";
+
 import { createSnakeRenderer } from "./snake.js";
 
 import { isSamePosition, willHitSelf, willHitWall } from "./game/collision.js";
@@ -20,6 +22,8 @@ import { getNextHeadPosition, moveSnakeSegments } from "./game/movement.js";
 
 import { initOrientationLock } from "./game/orientation.js";
 
+import { createStartScreen } from "./game/start-screen.js";
+
 import { createGameState } from "./game/state.js";
 
 import { setTheme, THEMES } from "./game/theme.js";
@@ -28,36 +32,34 @@ import { setTheme, THEMES } from "./game/theme.js";
    THEME
    ========================================================= */
 
-/*
- * Tema provisório da partida.
- *
- * Futuramente este valor virá da tela
- * de seleção da personagem.
- */
-
-setTheme(THEMES.VERMILLY);
+setTheme(THEMES.AZULLY);
 
 /* =========================================================
    ORIENTATION
    ========================================================= */
 
-/*
- * Em dispositivos touch, tentamos manter
- * o jogo em orientação portrait.
- *
- * Desktop permanece completamente fora
- * dessa lógica.
- *
- * Navegadores podem negar o bloqueio quando
- * a página não está em fullscreen ou instalada
- * como PWA. Nesses casos, o jogo continua
- * funcionando normalmente.
- */
-
 initOrientationLock();
 
 /* =========================================================
-   DOM
+   DOM — TELAS
+   ========================================================= */
+
+const startScreenElement = document.getElementById("start-screen");
+
+const gameStage = document.getElementById("game-stage");
+
+const gameModeValue = document.getElementById("game-mode");
+
+/* =========================================================
+   DOM — COUNTDOWN
+   ========================================================= */
+
+const countdownElement = document.getElementById("game-countdown");
+
+const countdownValue = document.getElementById("game-countdown-value");
+
+/* =========================================================
+   DOM — GAMEPLAY
    ========================================================= */
 
 const gameBoard = document.querySelector(".game-board");
@@ -69,24 +71,22 @@ const mouseFood = document.querySelector(".mouse-food");
 const mouseActor = mouseFood?.querySelector(".mouse-actor");
 
 /* =========================================================
-   CONFIGURAÇÃO INICIAL DA PARTIDA
+   CONFIGURAÇÃO INICIAL
+
+   10 colunas × 22 linhas.
+
+   A Jaraka começa verticalmente,
+   aproximadamente no centro da arena,
+   apontando para baixo.
    ========================================================= */
 
-/*
- * Arena:
- * 10 colunas × 22 linhas.
- *
- * A Jaraka começa centralizada horizontalmente,
- * com espaço livre dos dois lados.
- */
-
 const initialSnake = [
-  { x: 7, y: 11 },
-  { x: 6, y: 11 },
   { x: 5, y: 11 },
-  { x: 4, y: 11 },
-  { x: 3, y: 11 },
-  { x: 2, y: 11 },
+  { x: 5, y: 10 },
+  { x: 5, y: 9 },
+  { x: 5, y: 8 },
+  { x: 5, y: 7 },
+  { x: 5, y: 6 },
 ];
 
 /* =========================================================
@@ -101,25 +101,13 @@ const gameState = createGameState({
    POSIÇÃO COMPARTILHADA DO RATO
    ========================================================= */
 
-/*
- * Este é o único objeto de posição do rato.
- *
- * Ele é compartilhado entre:
- * - mouseController;
- * - foodController.
- *
- * O foodController altera x e y,
- * enquanto o mouseController lê
- * esses mesmos valores.
- */
-
 const mousePosition = {
   x: 0,
   y: 0,
 };
 
 /* =========================================================
-   CONTROLLERS PRINCIPAIS
+   CONTROLLERS
    ========================================================= */
 
 const snakeRenderer = createSnakeRenderer({
@@ -128,14 +116,15 @@ const snakeRenderer = createSnakeRenderer({
 
 const mouseController = createMouseController({
   element: mouseFood,
+
   position: mousePosition,
 });
 
 const growthController = createGrowthController();
 
 const directionController = createDirectionController({
-  x: 1,
-  y: 0,
+  x: 0,
+  y: 1,
 });
 
 const foodController = createFoodController({
@@ -155,16 +144,6 @@ const foodController = createFoodController({
 /* =========================================================
    REFERÊNCIAS TARDIAS
    ========================================================= */
-
-/*
- * Input e loop são criados mais abaixo,
- * mas o controller de game over precisa
- * conseguir interromper ambos.
- *
- * Mantemos referências mutáveis apenas
- * para resolver essa dependência de ciclo
- * de vida sem acoplar os módulos.
- */
 
 let inputController = null;
 
@@ -193,14 +172,6 @@ function startEatingSequence() {
     return;
   }
 
-  /*
-   * Aqui ficam somente os efeitos visuais
-   * coordenados pelo renderer.
-   *
-   * O crescimento lógico já foi tratado
-   * dentro do movimento.
-   */
-
   snakeRenderer.triggerEatingSequence({
     onMouseEnter: () => {
       if (gameState.isGameOver()) {
@@ -214,10 +185,6 @@ function startEatingSequence() {
       if (gameState.isGameOver()) {
         return;
       }
-
-      /*
-       * Final exclusivamente visual.
-       */
     },
   });
 }
@@ -241,10 +208,9 @@ function moveSnake() {
 
   const newHead = getNextHeadPosition(head, direction);
 
-  /*
-   * Detectamos a alimentação antes
-   * de efetivar o movimento.
-   */
+  /* -------------------------------------------------------
+     ALIMENTAÇÃO
+     ------------------------------------------------------- */
 
   const willEatMouse = isSamePosition(newHead, foodController.getPosition());
 
@@ -259,7 +225,7 @@ function moveSnake() {
   }
 
   /* -------------------------------------------------------
-     COLISÃO COM O PRÓPRIO CORPO
+     COLISÃO COM O CORPO
      ------------------------------------------------------- */
 
   if (
@@ -279,7 +245,7 @@ function moveSnake() {
   }
 
   /* -------------------------------------------------------
-     CRESCIMENTO — MESMO TICK
+     CRESCIMENTO
      ------------------------------------------------------- */
 
   if (willEatMouse) {
@@ -293,7 +259,7 @@ function moveSnake() {
   gameState.snapshotRenderSnake();
 
   /* -------------------------------------------------------
-     MOVIMENTO DOS SEGMENTOS
+     MOVIMENTO
      ------------------------------------------------------- */
 
   const tailBeforeMove = moveSnakeSegments(snake, newHead);
@@ -338,7 +304,9 @@ function moveSnake() {
 function renderGame(progress) {
   snakeRenderer.render(
     gameState.getRenderSnake(),
+
     gameState.getPreviousRenderSnake(),
+
     progress,
   );
 }
@@ -396,26 +364,215 @@ gameLoop = createGameLoop({
 });
 
 /* =========================================================
-   INICIALIZAÇÃO
+   PREPARAÇÃO DA PARTIDA
+
+   A cobra e o rato são preparados internamente
+   antes da contagem, garantindo que possam surgir
+   instantaneamente quando GO terminar.
+
+   Durante o countdown, porém, o CSS mantém
+   ambos invisíveis.
    ========================================================= */
 
 const initialDirection = directionController.getDirection();
 
 snakeRenderer.create(gameState.getSnake(), initialDirection);
 
-/*
- * O primeiro rato da partida nasce
- * em uma célula livre aleatória.
- */
-
 foodController.spawnInitial();
 
 snakeRenderer.render(
   gameState.getRenderSnake(),
+
   gameState.getPreviousRenderSnake(),
+
   0,
 );
 
-inputController.start();
+/* =========================================================
+   UTILITÁRIO DE TEMPO
+   ========================================================= */
 
-gameLoop.start();
+function wait(duration) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, duration);
+  });
+}
+
+/* =========================================================
+   COUNTDOWN — RENDER
+   ========================================================= */
+
+function renderCountdownValue(value, state = "number") {
+  if (!countdownElement || !countdownValue) {
+    return;
+  }
+
+  countdownElement.dataset.state = state;
+
+  countdownValue.textContent = value;
+
+  /*
+   * Reinicia a animação de entrada
+   * em cada número.
+   */
+
+  countdownValue.style.animation = "none";
+
+  void countdownValue.offsetWidth;
+
+  countdownValue.style.animation = "";
+}
+
+/* =========================================================
+   COUNTDOWN
+   ========================================================= */
+
+async function runCountdown() {
+  if (!countdownElement) {
+    return;
+  }
+
+  countdownElement.hidden = false;
+
+  /* -------------------------------------------------------
+     3
+     ------------------------------------------------------- */
+
+  renderCountdownValue("3");
+
+  await wait(750);
+
+  /* -------------------------------------------------------
+     2
+     ------------------------------------------------------- */
+
+  renderCountdownValue("2");
+
+  await wait(750);
+
+  /* -------------------------------------------------------
+     1
+     ------------------------------------------------------- */
+
+  renderCountdownValue("1");
+
+  await wait(750);
+
+  /* -------------------------------------------------------
+     GO
+     ------------------------------------------------------- */
+
+  renderCountdownValue("GO!", "go");
+
+  await wait(550);
+
+  /* -------------------------------------------------------
+     FIM
+     ------------------------------------------------------- */
+
+  countdownElement.hidden = true;
+
+  countdownElement.removeAttribute("data-state");
+}
+
+/* =========================================================
+   REVELAÇÃO DOS ATORES
+   ========================================================= */
+
+function revealActors() {
+  /*
+   * Remover esta classe faz cobra e rato
+   * aparecerem juntos no mesmo frame.
+   */
+
+  gameStage.classList.remove("game-stage--countdown");
+}
+
+/* =========================================================
+   INÍCIO REAL
+   ========================================================= */
+
+async function startGameplay(mode) {
+  /* -------------------------------------------------------
+     HUD
+     ------------------------------------------------------- */
+
+  if (gameModeValue) {
+    gameModeValue.textContent = mode === "classic" ? "CLASSIC" : "NO WALL";
+  }
+
+  /* -------------------------------------------------------
+     PREPARA ESTADO DE COUNTDOWN
+     ------------------------------------------------------- */
+
+  gameStage.classList.add("game-stage--countdown");
+
+  /* -------------------------------------------------------
+     TROCA DE TELA
+     ------------------------------------------------------- */
+
+  startScreenElement.hidden = true;
+
+  gameStage.classList.remove("game-stage--waiting");
+
+  gameStage.setAttribute("aria-hidden", "false");
+
+  /*
+   * Esperamos dois frames para garantir
+   * que arena e countdown sejam pintados
+   * antes de iniciar a sequência.
+   */
+
+  await new Promise((resolve) => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(resolve);
+    });
+  });
+
+  /* -------------------------------------------------------
+     COUNTDOWN
+
+     Cobra e rato continuam invisíveis.
+     Input e loop continuam desligados.
+     ------------------------------------------------------- */
+
+  await runCountdown();
+
+  /* -------------------------------------------------------
+     GO TERMINOU
+
+     Cobra e rato aparecem simultaneamente.
+     ------------------------------------------------------- */
+
+  revealActors();
+
+  /*
+   * Um frame garante que os dois atores
+   * sejam pintados juntos antes do primeiro
+   * avanço lógico da cobra.
+   */
+
+  await new Promise((resolve) => {
+    requestAnimationFrame(resolve);
+  });
+
+  /* -------------------------------------------------------
+     PARTIDA
+     ------------------------------------------------------- */
+
+  inputController.start();
+
+  gameLoop.start();
+}
+
+/* =========================================================
+   START SCREEN
+   ========================================================= */
+
+createStartScreen({
+  element: startScreenElement,
+
+  onStart: ({ mode }) => {
+    startGameplay(mode);
+  },
+});
