@@ -89,9 +89,17 @@
   box-sizing: border-box;
 }
 
+/* =========================================================
+   DOCUMENTO
+   ========================================================= */
+
 html {
   width: 100%;
   height: 100%;
+
+  overflow: hidden;
+
+  overscroll-behavior: none;
 }
 
 body {
@@ -104,6 +112,8 @@ body {
   margin: 0;
 
   overflow: hidden;
+
+  overscroll-behavior: none;
 
   color: var(--color-interface);
 
@@ -328,12 +338,6 @@ body {
 /* =========================================================
    VIEWPORT EXTREMAMENTE ALTA E ESTREITA
    ========================================================= */
-
-/*
- * Quando a largura é o gargalo inevitável,
- * preservamos integralmente a proporção 10 × 22
- * e apenas distribuímos o espaço vertical restante.
- */
 
 @media (max-aspect-ratio: 2 / 5) {
   .game-shell {

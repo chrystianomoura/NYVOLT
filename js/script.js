@@ -22,6 +22,8 @@ import { getNextHeadPosition, moveSnakeSegments } from "./game/movement.js";
 
 import { initOrientationLock } from "./game/orientation.js";
 
+import { createScoreController } from "./game/score.js";
+
 import { createStartScreen } from "./game/start-screen.js";
 
 import { createGameState } from "./game/state.js";
@@ -49,6 +51,14 @@ const startScreenElement = document.getElementById("start-screen");
 const gameStage = document.getElementById("game-stage");
 
 const gameModeValue = document.getElementById("game-mode");
+
+/* =========================================================
+   DOM — SCORE
+   ========================================================= */
+
+const scoreElement = document.getElementById("score");
+
+const highScoreElement = document.getElementById("high-score");
 
 /* =========================================================
    DOM — COUNTDOWN
@@ -139,6 +149,12 @@ const foodController = createFoodController({
   getSnake: () => gameState.getSnake(),
 
   isGameOver: () => gameState.isGameOver(),
+});
+
+const scoreController = createScoreController({
+  scoreElement,
+
+  highScoreElement,
 });
 
 /* =========================================================
@@ -245,11 +261,13 @@ function moveSnake() {
   }
 
   /* -------------------------------------------------------
-     CRESCIMENTO
+     CRESCIMENTO E SCORE
      ------------------------------------------------------- */
 
   if (willEatMouse) {
     growthController.queue();
+
+    scoreController.increment();
   }
 
   /* -------------------------------------------------------
@@ -493,6 +511,12 @@ function revealActors() {
    ========================================================= */
 
 async function startGameplay(mode) {
+  /* -------------------------------------------------------
+     SCORE
+     ------------------------------------------------------- */
+
+  scoreController.startRound(mode);
+
   /* -------------------------------------------------------
      HUD
      ------------------------------------------------------- */
