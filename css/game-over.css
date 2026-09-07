@@ -1,0 +1,430 @@
+/* =========================================================
+   JARAKA — GAME OVER
+
+   Sequência:
+   1. colisão congela a partida;
+   2. cobra e rato permanecem na posição final;
+   3. ambos piscam 3 vezes de forma fluida;
+   4. ao final exato da terceira piscada:
+      - cobra e rato desaparecem;
+      - GAME / OVER aparece imediatamente;
+   5. SCORE e HIGH SCORE recebem um pulso cromático curto.
+
+   Regras:
+   - nenhuma animação de saída;
+   - nenhuma pausa após a terceira piscada;
+   - nenhuma alteração de geometria dos atores;
+   - nenhuma alteração cromática durante a morte;
+   - SCORE e HIGH SCORE não mudam de tamanho ou posição;
+   - os dois botões possuem exatamente a mesma geometria.
+   ========================================================= */
+
+/* =========================================================
+   SEQUÊNCIA DE MORTE
+   ========================================================= */
+
+.game-board[data-game-state="dying"] .snake-layer,
+.game-board[data-game-state="dying"] .mouse-food {
+  animation: jaraka-death-blink 1200ms ease-in-out both;
+
+  pointer-events: none;
+}
+
+/* =========================================================
+   ATORES — GAME OVER FINAL
+   ========================================================= */
+
+.game-board[data-game-state="game-over"] .snake-layer,
+.game-board[data-game-state="game-over"] .mouse-food,
+.game-board[data-game-state="game-over"] .mouse-actor {
+  visibility: hidden !important;
+}
+
+/* =========================================================
+   OVERLAY
+   ========================================================= */
+
+.game-over {
+  position: absolute;
+
+  inset: 0;
+
+  z-index: 950;
+
+  display: grid;
+
+  place-items: center;
+
+  min-width: 0;
+  min-height: 0;
+
+  overflow: hidden;
+
+  pointer-events: none;
+}
+
+.game-over[hidden] {
+  display: none;
+}
+
+/* =========================================================
+   CONTEÚDO
+   ========================================================= */
+
+.game-over__content {
+  width: min(84%, 310px);
+
+  min-width: 0;
+  max-width: 100%;
+
+  display: grid;
+
+  justify-items: center;
+
+  row-gap: clamp(28px, calc(var(--board-width) * 0.09), 42px);
+
+  text-align: center;
+
+  pointer-events: auto;
+}
+
+/* =========================================================
+   TÍTULO — GAME / OVER
+   ========================================================= */
+
+.game-over__title {
+  width: 100%;
+
+  min-width: 0;
+  max-width: 100%;
+
+  margin: 0;
+
+  display: grid;
+
+  justify-items: center;
+
+  row-gap: clamp(2px, calc(var(--board-width) * 0.012), 6px);
+
+  font-size: clamp(52px, calc(var(--board-width) * 0.2), 86px);
+
+  font-weight: 800;
+
+  line-height: 0.82;
+
+  letter-spacing: 0.035em;
+
+  color: var(--theme-color);
+
+  text-align: center;
+
+  text-shadow:
+    0 0 8px color-mix(in srgb, var(--theme-color) 64%, transparent),
+    0 0 22px color-mix(in srgb, var(--theme-color) 30%, transparent),
+    0 0 48px color-mix(in srgb, var(--theme-color) 12%, transparent);
+
+  animation: jaraka-game-over-title 560ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.game-over__title span {
+  display: block;
+
+  white-space: nowrap;
+}
+
+/* =========================================================
+   AÇÕES
+   ========================================================= */
+
+.game-over__actions {
+  width: min(100%, 290px);
+
+  min-width: 0;
+  max-width: 100%;
+
+  display: grid;
+
+  grid-template-columns: minmax(0, 1fr);
+
+  gap: clamp(14px, calc(var(--board-width) * 0.045), 20px);
+}
+
+/* =========================================================
+   BOTÕES
+
+   Os dois possuem exatamente:
+   - mesma largura;
+   - mesma altura;
+   - mesmo padding;
+   - mesma borda;
+   - mesma tipografia;
+   - mesmo box-sizing.
+   ========================================================= */
+
+.game-over__button {
+  width: 100%;
+
+  min-width: 0;
+  max-width: 100%;
+
+  height: clamp(54px, calc(var(--board-width) * 0.16), 66px);
+
+  display: grid;
+
+  place-items: center;
+
+  padding: 0 clamp(14px, calc(var(--board-width) * 0.05), 22px);
+
+  border: 2px solid color-mix(in srgb, var(--theme-color) 76%, transparent);
+
+  border-radius: 11px;
+
+  color: var(--theme-color);
+
+  background:
+    radial-gradient(
+      circle at 50% 0%,
+      color-mix(in srgb, var(--theme-color) 13%, transparent) 0%,
+      transparent 72%
+    ),
+    color-mix(in srgb, var(--theme-color) 4%, var(--color-background));
+
+  box-shadow:
+    0 0 10px color-mix(in srgb, var(--theme-color) 12%, transparent),
+    inset 0 0 22px color-mix(in srgb, var(--theme-color) 4%, transparent);
+
+  font: inherit;
+
+  font-size: clamp(13px, calc(var(--board-width) * 0.046), 17px);
+
+  font-weight: 700;
+
+  line-height: 1;
+
+  letter-spacing: 0.04em;
+
+  text-align: center;
+
+  white-space: nowrap;
+
+  cursor: pointer;
+
+  box-sizing: border-box;
+
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    background 160ms ease,
+    box-shadow 160ms ease;
+}
+
+/* =========================================================
+   INTERAÇÃO
+   ========================================================= */
+
+.game-over__button:hover {
+  transform: translateY(-2px);
+
+  border-color: var(--theme-color);
+
+  box-shadow:
+    0 0 15px color-mix(in srgb, var(--theme-color) 25%, transparent),
+    inset 0 0 25px color-mix(in srgb, var(--theme-color) 7%, transparent);
+}
+
+.game-over__button:active {
+  transform: translateY(0);
+}
+
+/* =========================================================
+   FOCO
+   ========================================================= */
+
+.game-over__button:focus-visible {
+  outline: none;
+
+  border-color: var(--theme-color);
+
+  box-shadow:
+    0 0 7px color-mix(in srgb, var(--theme-color) 58%, transparent),
+    0 0 18px color-mix(in srgb, var(--theme-color) 26%, transparent),
+    inset 0 0 24px color-mix(in srgb, var(--theme-color) 7%, transparent);
+}
+
+/* =========================================================
+   MORTE — 3 PISCADAS FLUIDAS
+
+   1200 ms totais.
+   Aproximadamente 400 ms por pulsação.
+
+   Trabalhamos exclusivamente com opacity:
+   - sem brightness;
+   - sem blur;
+   - sem transform;
+   - sem alteração de cor.
+
+   Ao atingir 100%, o animationend informa ao JavaScript
+   que a sequência terminou.
+   ========================================================= */
+
+@keyframes jaraka-death-blink {
+  0% {
+    opacity: 1;
+  }
+
+  16.666% {
+    opacity: 0.12;
+  }
+
+  33.333% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.12;
+  }
+
+  66.666% {
+    opacity: 1;
+  }
+
+  83.333% {
+    opacity: 0.12;
+  }
+
+  100% {
+    opacity: 1;
+  }
+}
+
+/* =========================================================
+   GAME OVER — ENTRADA
+   ========================================================= */
+
+@keyframes jaraka-game-over-title {
+  0% {
+    opacity: 0;
+
+    transform: scale(0.88);
+  }
+
+  55% {
+    opacity: 1;
+
+    transform: scale(1.025);
+  }
+
+  100% {
+    opacity: 1;
+
+    transform: scale(1);
+  }
+}
+
+/* =========================================================
+   SCORE / HIGH SCORE — PULSO CROMÁTICO
+
+   Não existe:
+   - scale;
+   - translate;
+   - alteração de layout;
+   - salto;
+   - mudança de tamanho.
+
+   O número permanece exatamente na mesma posição.
+
+   Movimento visual:
+   branco → cor da personagem → branco.
+   ========================================================= */
+
+.game-stage--game-over #score,
+.game-stage--game-over #high-score {
+  animation: jaraka-game-over-score-color 480ms ease-in-out both;
+}
+
+@keyframes jaraka-game-over-score-color {
+  0% {
+    color: #ffffff;
+
+    text-shadow: none;
+  }
+
+  50% {
+    color: var(--theme-color);
+
+    text-shadow: 0 0 6px color-mix(in srgb, var(--theme-color) 38%, transparent);
+  }
+
+  100% {
+    color: #ffffff;
+
+    text-shadow: none;
+  }
+}
+
+/* =========================================================
+   VIEWPORT MUITO ESTREITA
+   ========================================================= */
+
+@media (max-width: 320px) {
+  .game-over__content {
+    width: 86%;
+  }
+
+  .game-over__actions {
+    width: 100%;
+  }
+
+  .game-over__button {
+    height: clamp(52px, calc(var(--board-width) * 0.16), 62px);
+
+    font-size: clamp(12px, calc(var(--board-width) * 0.043), 15px);
+
+    letter-spacing: 0.03em;
+  }
+}
+
+/* =========================================================
+   VIEWPORT BAIXA
+   ========================================================= */
+
+@media (max-height: 560px) {
+  .game-over__content {
+    row-gap: clamp(20px, calc(var(--board-width) * 0.065), 30px);
+  }
+
+  .game-over__title {
+    font-size: clamp(44px, calc(var(--board-width) * 0.175), 72px);
+  }
+
+  .game-over__button {
+    height: clamp(48px, calc(var(--board-width) * 0.14), 58px);
+  }
+}
+
+/* =========================================================
+   MOVIMENTO REDUZIDO
+   ========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  .game-board[data-game-state="dying"] .snake-layer,
+  .game-board[data-game-state="dying"] .mouse-food {
+    animation: jaraka-death-blink-reduced 180ms ease-out both;
+  }
+
+  .game-over__title,
+  .game-stage--game-over #score,
+  .game-stage--game-over #high-score {
+    animation: none;
+  }
+}
+
+@keyframes jaraka-death-blink-reduced {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 1;
+  }
+}

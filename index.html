@@ -32,9 +32,9 @@
             </button>
           </header>
 
-          <!-- =================================================
+          <!-- =============================================
                PERSONAGENS
-               ================================================= -->
+               ============================================= -->
 
           <section
             class="start-screen__step start-screen__step--characters"
@@ -89,9 +89,9 @@
             </div>
           </section>
 
-          <!-- =================================================
+          <!-- =============================================
                MODOS
-               ================================================= -->
+               ============================================= -->
 
           <section
             class="start-screen__step start-screen__step--mode"
@@ -163,9 +163,9 @@
 
         <section class="game-board" aria-label="Tabuleiro da JARAKA">
           <div class="game-board__viewport">
-            <!-- =============================================
+            <!-- ===========================================
                  IDENTIDADE
-                 ============================================= -->
+                 =========================================== -->
 
             <div class="game-board__brand" aria-hidden="true">
               <span class="game-board__brand-title"> JARAKA </span>
@@ -175,9 +175,9 @@
               </span>
             </div>
 
-            <!-- =============================================
+            <!-- ===========================================
                  COUNTDOWN
-                 ============================================= -->
+                 =========================================== -->
 
             <div
               class="game-countdown"
@@ -191,9 +191,47 @@
               </span>
             </div>
 
-            <!-- =============================================
+            <!-- ===========================================
+                 GAME OVER
+                 =========================================== -->
+
+            <div
+              class="game-over"
+              id="game-over"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="game-over-title"
+              hidden
+            >
+              <div class="game-over__content">
+                <h2 class="game-over__title" id="game-over-title">
+                  <span>GAME</span>
+                  <span>OVER</span>
+                </h2>
+
+                <div class="game-over__actions">
+                  <button
+                    class="game-over__button"
+                    id="game-over-replay"
+                    type="button"
+                  >
+                    JOGAR NOVAMENTE
+                  </button>
+
+                  <button
+                    class="game-over__button"
+                    id="game-over-exit"
+                    type="button"
+                  >
+                    SAIR
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- ===========================================
                  RATO
-                 ============================================= -->
+                 =========================================== -->
 
             <div class="mouse-food is-angry" aria-label="Ratinho">
               <div class="mouse-actor">
@@ -231,9 +269,9 @@
               </div>
             </div>
 
-            <!-- =============================================
+            <!-- ===========================================
                  COBRA
-                 ============================================= -->
+                 =========================================== -->
 
             <div class="snake-layer" aria-label="Personagem da JARAKA"></div>
           </div>

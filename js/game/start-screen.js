@@ -59,6 +59,32 @@ export function createStartScreen({ element, onStart }) {
   }
 
   /* =======================================================
+     RESET
+     ======================================================= */
+
+  function reset() {
+    selectedCharacter = null;
+
+    selectedMode = null;
+
+    characterButtons.forEach((button) => {
+      button.setAttribute("aria-pressed", "false");
+    });
+
+    modeButtons.forEach((button) => {
+      button.setAttribute("aria-pressed", "false");
+    });
+
+    playButton.hidden = false;
+
+    characterStep.hidden = true;
+
+    modeStep.hidden = true;
+
+    element.removeAttribute("data-step");
+  }
+
+  /* =======================================================
      ETAPA 1 → PERSONAGENS
      ======================================================= */
 
@@ -141,6 +167,8 @@ export function createStartScreen({ element, onStart }) {
      ======================================================= */
 
   return {
+    reset,
+
     getSelection() {
       return {
         character: selectedCharacter,

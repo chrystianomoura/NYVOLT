@@ -69,6 +69,16 @@ const countdownElement = document.getElementById("game-countdown");
 const countdownValue = document.getElementById("game-countdown-value");
 
 /* =========================================================
+   DOM — GAME OVER
+   ========================================================= */
+
+const gameOverElement = document.getElementById("game-over");
+
+const gameOverReplayButton = document.getElementById("game-over-replay");
+
+const gameOverExitButton = document.getElementById("game-over-exit");
+
+/* =========================================================
    DOM — GAMEPLAY
    ========================================================= */
 
@@ -82,12 +92,6 @@ const mouseActor = mouseFood?.querySelector(".mouse-actor");
 
 /* =========================================================
    CONFIGURAÇÃO INICIAL
-
-   10 colunas × 22 linhas.
-
-   A Jaraka começa verticalmente,
-   aproximadamente no centro da arena,
-   apontando para baixo.
    ========================================================= */
 
 const initialSnake = [
@@ -99,13 +103,30 @@ const initialSnake = [
   { x: 5, y: 6 },
 ];
 
+const initialDirection = {
+  x: 0,
+  y: 1,
+};
+
 /* =========================================================
-   ESTADO
+   ESTADO DA SESSÃO
    ========================================================= */
 
-const gameState = createGameState({
+let currentMode = null;
+
+let roundTransitioning = false;
+
+/* =========================================================
+   ESTADO DA RODADA
+   ========================================================= */
+
+let gameState = createGameState({
   initialSnake,
 });
+
+let growthController = createGrowthController();
+
+let directionController = createDirectionController(initialDirection);
 
 /* =========================================================
    POSIÇÃO COMPARTILHADA DO RATO
@@ -117,7 +138,7 @@ const mousePosition = {
 };
 
 /* =========================================================
-   CONTROLLERS
+   RENDERERS / CONTROLLERS PERSISTENTES
    ========================================================= */
 
 const snakeRenderer = createSnakeRenderer({
@@ -128,13 +149,6 @@ const mouseController = createMouseController({
   element: mouseFood,
 
   position: mousePosition,
-});
-
-const growthController = createGrowthController();
-
-const directionController = createDirectionController({
-  x: 0,
-  y: 1,
 });
 
 const foodController = createFoodController({
@@ -165,19 +179,9 @@ let inputController = null;
 
 let gameLoop = null;
 
-/* =========================================================
-   GAME OVER
-   ========================================================= */
+let startScreenController = null;
 
-const gameOverController = createGameOverController({
-  gameBoard,
-
-  gameState,
-
-  getInputController: () => inputController,
-
-  getGameLoop: () => gameLoop,
-});
+let gameOverController = null;
 
 /* =========================================================
    ALIMENTAÇÃO
@@ -224,25 +228,13 @@ function moveSnake() {
 
   const newHead = getNextHeadPosition(head, direction);
 
-  /* -------------------------------------------------------
-     ALIMENTAÇÃO
-     ------------------------------------------------------- */
-
   const willEatMouse = isSamePosition(newHead, foodController.getPosition());
-
-  /* -------------------------------------------------------
-     COLISÃO COM PAREDE
-     ------------------------------------------------------- */
 
   if (willHitWall(newHead)) {
     gameOverController.end("wall");
 
     return;
   }
-
-  /* -------------------------------------------------------
-     COLISÃO COM O CORPO
-     ------------------------------------------------------- */
 
   if (
     willHitSelf({
@@ -260,55 +252,27 @@ function moveSnake() {
     return;
   }
 
-  /* -------------------------------------------------------
-     CRESCIMENTO E SCORE
-     ------------------------------------------------------- */
-
   if (willEatMouse) {
     growthController.queue();
 
     scoreController.increment();
   }
 
-  /* -------------------------------------------------------
-     SNAPSHOT VISUAL
-     ------------------------------------------------------- */
-
   gameState.snapshotRenderSnake();
-
-  /* -------------------------------------------------------
-     MOVIMENTO
-     ------------------------------------------------------- */
 
   const tailBeforeMove = moveSnakeSegments(snake, newHead);
 
-  /* -------------------------------------------------------
-     CRESCIMENTO LÓGICO
-     ------------------------------------------------------- */
-
   const didGrow = growthController.applyPendingGrowth(snake, tailBeforeMove);
-
-  /* -------------------------------------------------------
-     CRESCIMENTO VISUAL
-     ------------------------------------------------------- */
 
   const renderSnake = growthController.updateVisualGrowth(snake, didGrow);
 
   gameState.setRenderSnake(renderSnake);
-
-  /* -------------------------------------------------------
-     RENDERER
-     ------------------------------------------------------- */
 
   snakeRenderer.updateSegmentShapes(snake, direction);
 
   snakeRenderer.updateHeadDirection(direction);
 
   mouseController.update(snake[0]);
-
-  /* -------------------------------------------------------
-     ALIMENTAÇÃO VISUAL
-     ------------------------------------------------------- */
 
   if (willEatMouse) {
     startEatingSequence();
@@ -382,32 +346,7 @@ gameLoop = createGameLoop({
 });
 
 /* =========================================================
-   PREPARAÇÃO DA PARTIDA
-
-   A cobra e o rato são preparados internamente
-   antes da contagem, garantindo que possam surgir
-   instantaneamente quando GO terminar.
-
-   Durante o countdown, porém, o CSS mantém
-   ambos invisíveis.
-   ========================================================= */
-
-const initialDirection = directionController.getDirection();
-
-snakeRenderer.create(gameState.getSnake(), initialDirection);
-
-foodController.spawnInitial();
-
-snakeRenderer.render(
-  gameState.getRenderSnake(),
-
-  gameState.getPreviousRenderSnake(),
-
-  0,
-);
-
-/* =========================================================
-   UTILITÁRIO DE TEMPO
+   TEMPO
    ========================================================= */
 
 function wait(duration) {
@@ -417,7 +356,7 @@ function wait(duration) {
 }
 
 /* =========================================================
-   COUNTDOWN — RENDER
+   COUNTDOWN — VALOR
    ========================================================= */
 
 function renderCountdownValue(value, state = "number") {
@@ -428,11 +367,6 @@ function renderCountdownValue(value, state = "number") {
   countdownElement.dataset.state = state;
 
   countdownValue.textContent = value;
-
-  /*
-   * Reinicia a animação de entrada
-   * em cada número.
-   */
 
   countdownValue.style.animation = "none";
 
@@ -452,41 +386,21 @@ async function runCountdown() {
 
   countdownElement.hidden = false;
 
-  /* -------------------------------------------------------
-     3
-     ------------------------------------------------------- */
-
   renderCountdownValue("3");
 
   await wait(750);
-
-  /* -------------------------------------------------------
-     2
-     ------------------------------------------------------- */
 
   renderCountdownValue("2");
 
   await wait(750);
 
-  /* -------------------------------------------------------
-     1
-     ------------------------------------------------------- */
-
   renderCountdownValue("1");
 
   await wait(750);
 
-  /* -------------------------------------------------------
-     GO
-     ------------------------------------------------------- */
-
   renderCountdownValue("GO!", "go");
 
   await wait(550);
-
-  /* -------------------------------------------------------
-     FIM
-     ------------------------------------------------------- */
 
   countdownElement.hidden = true;
 
@@ -494,46 +408,73 @@ async function runCountdown() {
 }
 
 /* =========================================================
-   REVELAÇÃO DOS ATORES
+   PREPARAÇÃO DA RODADA
    ========================================================= */
 
-function revealActors() {
-  /*
-   * Remover esta classe faz cobra e rato
-   * aparecerem juntos no mesmo frame.
-   */
+function prepareRound(mode) {
+  gameStage.classList.add("game-stage--countdown");
 
-  gameStage.classList.remove("game-stage--countdown");
-}
+  gameOverController.reset();
 
-/* =========================================================
-   INÍCIO REAL
-   ========================================================= */
+  gameState = createGameState({
+    initialSnake,
+  });
 
-async function startGameplay(mode) {
-  /* -------------------------------------------------------
-     SCORE
-     ------------------------------------------------------- */
+  growthController = createGrowthController();
+
+  directionController = createDirectionController(initialDirection);
+
+  inputController?.unlock();
+
+  foodController.resetVisualState();
+
+  const direction = directionController.getDirection();
+
+  snakeRenderer.create(gameState.getSnake(), direction);
+
+  snakeRenderer.render(
+    gameState.getRenderSnake(),
+
+    gameState.getPreviousRenderSnake(),
+
+    0,
+  );
+
+  foodController.spawnInitial();
 
   scoreController.startRound(mode);
-
-  /* -------------------------------------------------------
-     HUD
-     ------------------------------------------------------- */
 
   if (gameModeValue) {
     gameModeValue.textContent = mode === "classic" ? "CLASSIC" : "NO WALL";
   }
+}
 
-  /* -------------------------------------------------------
-     PREPARA ESTADO DE COUNTDOWN
-     ------------------------------------------------------- */
+/* =========================================================
+   REVELAÇÃO DOS ATORES
+   ========================================================= */
 
-  gameStage.classList.add("game-stage--countdown");
+function revealActors() {
+  gameStage.classList.remove("game-stage--countdown");
+}
 
-  /* -------------------------------------------------------
-     TROCA DE TELA
-     ------------------------------------------------------- */
+/* =========================================================
+   INÍCIO / REINÍCIO
+   ========================================================= */
+
+async function startGameplay(mode) {
+  if (roundTransitioning || !mode) {
+    return;
+  }
+
+  roundTransitioning = true;
+
+  currentMode = mode;
+
+  inputController.stop();
+
+  gameLoop.stop();
+
+  prepareRound(mode);
 
   startScreenElement.hidden = true;
 
@@ -541,59 +482,98 @@ async function startGameplay(mode) {
 
   gameStage.setAttribute("aria-hidden", "false");
 
-  /*
-   * Esperamos dois frames para garantir
-   * que arena e countdown sejam pintados
-   * antes de iniciar a sequência.
-   */
-
   await new Promise((resolve) => {
     requestAnimationFrame(() => {
       requestAnimationFrame(resolve);
     });
   });
 
-  /* -------------------------------------------------------
-     COUNTDOWN
-
-     Cobra e rato continuam invisíveis.
-     Input e loop continuam desligados.
-     ------------------------------------------------------- */
-
   await runCountdown();
 
-  /* -------------------------------------------------------
-     GO TERMINOU
-
-     Cobra e rato aparecem simultaneamente.
-     ------------------------------------------------------- */
-
   revealActors();
-
-  /*
-   * Um frame garante que os dois atores
-   * sejam pintados juntos antes do primeiro
-   * avanço lógico da cobra.
-   */
 
   await new Promise((resolve) => {
     requestAnimationFrame(resolve);
   });
 
-  /* -------------------------------------------------------
-     PARTIDA
-     ------------------------------------------------------- */
-
   inputController.start();
 
   gameLoop.start();
+
+  roundTransitioning = false;
 }
+
+/* =========================================================
+   JOGAR NOVAMENTE
+   ========================================================= */
+
+function replayGame() {
+  if (!currentMode) {
+    return;
+  }
+
+  startGameplay(currentMode);
+}
+
+/* =========================================================
+   SAIR
+   ========================================================= */
+
+function exitToStartScreen() {
+  if (roundTransitioning) {
+    return;
+  }
+
+  inputController.stop();
+
+  gameLoop.stop();
+
+  gameStage.classList.add("game-stage--waiting");
+
+  gameStage.classList.remove("game-stage--countdown");
+
+  gameStage.setAttribute("aria-hidden", "true");
+
+  gameOverController.reset();
+
+  startScreenController.reset();
+
+  startScreenElement.hidden = false;
+
+  currentMode = null;
+}
+
+/* =========================================================
+   GAME OVER
+   ========================================================= */
+
+gameOverController = createGameOverController({
+  gameBoard,
+
+  gameStage,
+
+  overlay: gameOverElement,
+
+  replayButton: gameOverReplayButton,
+
+  exitButton: gameOverExitButton,
+
+  getGameState: () => gameState,
+
+  getInputController: () => inputController,
+
+  getGameLoop: () => gameLoop,
+
+  onReplay: replayGame,
+
+  onExit: exitToStartScreen,
+});
 
 /* =========================================================
    START SCREEN
    ========================================================= */
 
-createStartScreen({
+startScreenController = createStartScreen({
   element: startScreenElement,
 
   onStart: ({ mode }) => {

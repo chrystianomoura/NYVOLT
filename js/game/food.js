@@ -23,22 +23,6 @@ import { isSamePosition } from "./collision.js";
    ÁREA SEGURA DO RATO
    ========================================================= */
 
-/*
- * O rato é propositalmente maior que uma célula
- * e possui animações com:
- *
- * - salto;
- * - rotação;
- * - squash;
- * - stretch.
- *
- * Por isso ele não deve nascer diretamente
- * nas células periféricas da arena.
- *
- * Isso NÃO altera o tamanho do rato.
- * Apenas garante espaço para sua animação.
- */
-
 const SAFE_MARGIN_LEFT = 1;
 const SAFE_MARGIN_RIGHT = 1;
 
@@ -150,10 +134,6 @@ export function createFoodController({
 
     const nextPosition = freeCells[randomIndex];
 
-    /*
-     * Mantemos a mesma referência do objeto.
-     */
-
     position.x = nextPosition.x;
 
     position.y = nextPosition.y;
@@ -186,7 +166,7 @@ export function createFoodController({
   }
 
   /* =======================================================
-     RESET VISUAL
+     RESET VISUAL DO ATOR
      ======================================================= */
 
   function resetActor() {
@@ -229,6 +209,22 @@ export function createFoodController({
     void actor.offsetWidth;
 
     actor.style.animation = "";
+  }
+
+  /* =======================================================
+     LIMPEZA ENTRE RODADAS
+     ======================================================= */
+
+  function resetVisualState() {
+    resetActor();
+
+    restartActorAnimation();
+
+    const snake = getSnake();
+
+    if (snake.length > 0) {
+      mouseController.update(snake[0]);
+    }
   }
 
   /* =======================================================
@@ -334,10 +330,15 @@ export function createFoodController({
       .catch(() => {});
   }
 
+  /* =======================================================
+     API
+     ======================================================= */
+
   return {
     getPosition,
     spawnInitial,
     updatePosition,
     consumeVisually,
+    resetVisualState,
   };
 }
