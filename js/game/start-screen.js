@@ -21,7 +21,7 @@ const VALID_MODES = new Set(["classic", "no-wall"]);
    FACTORY
    ========================================================= */
 
-export function createStartScreen({ element, onStart }) {
+export function createStartScreen({ element, soundController, onStart }) {
   if (!element) {
     throw new Error("JARAKA — start screen não encontrada.");
   }
@@ -47,6 +47,14 @@ export function createStartScreen({ element, onStart }) {
   let selectedCharacter = null;
 
   let selectedMode = null;
+
+  /* =======================================================
+     SOM — MENU
+     ======================================================= */
+
+  function playMenuSound() {
+    soundController?.play("menu");
+  }
 
   /* =======================================================
      SELEÇÃO EXCLUSIVA
@@ -89,6 +97,8 @@ export function createStartScreen({ element, onStart }) {
      ======================================================= */
 
   function revealCharacters() {
+    playMenuSound();
+
     playButton.hidden = true;
 
     characterStep.hidden = false;
@@ -115,6 +125,13 @@ export function createStartScreen({ element, onStart }) {
 
     selectOnly(characterButtons, button);
 
+    /*
+     * O som só é disparado depois da confirmação
+     * de que o personagem e o tema são válidos.
+     */
+
+    playMenuSound();
+
     characterStep.hidden = true;
 
     modeStep.hidden = false;
@@ -136,6 +153,13 @@ export function createStartScreen({ element, onStart }) {
     selectedMode = mode;
 
     selectOnly(modeButtons, button);
+
+    /*
+     * Confirmação final do menu antes de iniciar
+     * a sequência de gameplay.
+     */
+
+    playMenuSound();
 
     onStart?.({
       character: selectedCharacter,

@@ -4,15 +4,20 @@
 
    Sequência:
    1. registra o fim lógico;
-   2. interrompe input e loop imediatamente;
-   3. preserva a posição final da cobra e do rato;
-   4. executa três piscadas fluidas;
-   5. animationend confirma o término exato;
-   6. cobra e rato desaparecem;
-   7. GAME / OVER entra no mesmo instante.
+   2. toca o impacto da colisão;
+   3. inicia o lamento do Game Over após 90 ms;
+   4. interrompe input e loop imediatamente;
+   5. preserva a posição final da cobra e do rato;
+   6. executa três piscadas fluidas;
+   7. animationend confirma o término exato;
+   8. cobra e rato desaparecem;
+   9. GAME / OVER entra no mesmo instante.
 
-   Não existe timer para sincronizar a transição.
+   Não existe timer para sincronizar a transição visual.
    A própria animação CSS determina seu término.
+
+   O único timer existente pertence à composição sonora
+   da morte: HIT → GAME OVER.
    ========================================================= */
 
 /* =========================================================
@@ -20,6 +25,8 @@
    ========================================================= */
 
 const DEATH_ANIMATION_NAME = "jaraka-death-blink";
+
+const GAME_OVER_SOUND_DELAY = 90;
 
 /* =========================================================
    FACTORY
@@ -34,6 +41,7 @@ export function createGameOverController({
   getGameState,
   getInputController,
   getGameLoop,
+  soundController,
   onReplay,
   onExit,
 }) {
@@ -144,6 +152,28 @@ export function createGameOverController({
       return false;
     }
 
+    /*
+     * O estado lógico já confirmou que esta é uma morte
+     * válida.
+     *
+     * Primeiro ouvimos o impacto físico da colisão.
+     */
+
+    soundController?.play("hit");
+
+    /*
+     * Pequeno intervalo para o cérebro separar:
+     *
+     * 1. colisão;
+     * 2. derrota.
+     *
+     * O lamento começa 90 ms depois.
+     */
+
+    window.setTimeout(() => {
+      soundController?.play("gameOver");
+    }, GAME_OVER_SOUND_DELAY);
+
     const inputController = getInputController?.();
 
     const gameLoop = getGameLoop?.();
@@ -158,7 +188,7 @@ export function createGameOverController({
 
     /*
      * A partir daqui aguardamos exclusivamente
-     * o animationend da sequência de morte.
+     * o animationend da sequência visual de morte.
      */
 
     waitingForDeathAnimation = true;

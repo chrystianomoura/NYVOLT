@@ -3,6 +3,8 @@
    Orquestração principal do jogo
    ========================================================= */
 
+import { createSoundController } from "./audio/sound.js";
+
 import { createInputController } from "./input.js";
 
 import { createMouseController } from "./mouse.js";
@@ -141,6 +143,8 @@ let directionController = createDirectionController(initialDirection);
 /* =========================================================
    CONTROLADORES FIXOS
    ========================================================= */
+
+const soundController = createSoundController();
 
 const snakeRenderer = createSnakeRenderer({
   board: gameBoard,
@@ -312,6 +316,8 @@ function handleDirectionChange(candidate) {
   snakeRenderer.updateHeadDirection(candidate);
 
   if (result.turnSide) {
+    soundController.play("turn");
+
     snakeRenderer.triggerHeadTurn(result.turnSide);
   }
 }
@@ -412,6 +418,8 @@ function moveSnake() {
     growthController.queue();
 
     scoreController.increment();
+
+    soundController.play("eat");
   }
 
   /* =======================================================
@@ -577,6 +585,8 @@ function replayGame() {
     return;
   }
 
+  soundController.play("restart");
+
   startGameplay(currentMode);
 }
 
@@ -585,6 +595,8 @@ function replayGame() {
    ========================================================= */
 
 function exitToStartScreen() {
+  soundController.play("exit");
+
   inputController?.stop();
 
   gameLoop?.stop();
@@ -622,6 +634,8 @@ gameOverController = createGameOverController({
 
   getGameLoop: () => gameLoop,
 
+  soundController,
+
   onReplay: replayGame,
 
   onExit: exitToStartScreen,
@@ -633,6 +647,8 @@ gameOverController = createGameOverController({
 
 startScreenController = createStartScreen({
   element: startScreenElement,
+
+  soundController,
 
   onStart: ({ mode }) => {
     startGameplay(mode);
