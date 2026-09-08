@@ -5,11 +5,15 @@
 import { EPSILON } from "../game/config.js";
 
 /* =========================================================
-   INTERPOLAÇÃO
+   UTILITÁRIOS
    ========================================================= */
 
 function lerp(start, end, progress) {
   return start + (end - start) * progress;
+}
+
+function clamp(value, minimum, maximum) {
+  return Math.min(Math.max(value, minimum), maximum);
 }
 
 function interpolatePoint(start, end, progress) {
@@ -19,10 +23,6 @@ function interpolatePoint(start, end, progress) {
     y: lerp(start.y, end.y, progress),
   };
 }
-
-/* =========================================================
-   CURVA QUADRÁTICA
-   ========================================================= */
 
 function getQuadraticPoint(start, control, end, progress) {
   const inverse = 1 - progress;
@@ -41,7 +41,7 @@ function getQuadraticPoint(start, control, end, progress) {
 }
 
 /* =========================================================
-   AMOSTRAGEM DA CURVA
+   QUADRÁTICA
    ========================================================= */
 
 function sampleQuadraticSegmentAtLength(segment, localLength) {
@@ -52,39 +52,50 @@ function sampleQuadraticSegmentAtLength(segment, localLength) {
     };
   }
 
-  const targetLength = Math.max(0, Math.min(localLength, segment.length));
+  const targetLength = clamp(localLength, 0, segment.length);
 
-  const samples = segment.samples;
+  const samples = segment.samples ?? [];
 
-  for (let index = 1; index < samples.length; index += 1) {
-    const current = samples[index];
-
-    if (targetLength > current.length) {
-      continue;
-    }
-
-    const previous = samples[index - 1];
-
-    const intervalLength = current.length - previous.length;
-
-    const intervalProgress =
-      intervalLength <= EPSILON
-        ? 0
-        : (targetLength - previous.length) / intervalLength;
-
-    const t = lerp(previous.t, current.t, intervalProgress);
-
-    return getQuadraticPoint(segment.start, segment.control, segment.end, t);
+  if (samples.length === 0) {
+    return {
+      x: segment.end.x,
+      y: segment.end.y,
+    };
   }
 
-  return {
-    x: segment.end.x,
-    y: segment.end.y,
-  };
+  let lower = samples[0];
+
+  let upper = samples[samples.length - 1];
+
+  for (let index = 1; index < samples.length; index += 1) {
+    if (samples[index].length >= targetLength) {
+      lower = samples[index - 1];
+
+      upper = samples[index];
+
+      break;
+    }
+  }
+
+  const intervalLength = upper.length - lower.length;
+
+  const intervalProgress =
+    intervalLength <= EPSILON
+      ? 0
+      : (targetLength - lower.length) / intervalLength;
+
+  const progress = lerp(lower.t, upper.t, intervalProgress);
+
+  return getQuadraticPoint(
+    segment.start,
+    segment.control,
+    segment.end,
+    progress,
+  );
 }
 
 /* =========================================================
-   AMOSTRAGEM DO PATH
+   AMOSTRAGEM
    ========================================================= */
 
 export function sampleRoundedPathAtLength(pathGeometry, distance) {
@@ -94,18 +105,21 @@ export function sampleRoundedPathAtLength(pathGeometry, distance) {
     return null;
   }
 
-  const totalLength = pathGeometry.totalLength;
+  const totalLength = pathGeometry.totalLength ?? 0;
 
-  const targetLength = Math.max(0, Math.min(distance, totalLength));
+  const targetDistance = clamp(distance, 0, totalLength);
 
   for (let index = 0; index < segments.length; index += 1) {
     const segment = segments[index];
 
-    if (targetLength > segment.endLength && index < segments.length - 1) {
+    if (
+      targetDistance > segment.endLength + EPSILON &&
+      index < segments.length - 1
+    ) {
       continue;
     }
 
-    const localLength = targetLength - segment.startLength;
+    const localLength = targetDistance - segment.startLength;
 
     if (segment.type === "quadratic") {
       return sampleQuadraticSegmentAtLength(segment, localLength);
@@ -118,7 +132,7 @@ export function sampleRoundedPathAtLength(pathGeometry, distance) {
       };
     }
 
-    const progress = Math.max(0, Math.min(localLength / segment.length, 1));
+    const progress = clamp(localLength / segment.length, 0, 1);
 
     return interpolatePoint(segment.start, segment.end, progress);
   }

@@ -364,7 +364,9 @@ export function createSnakeGeometry({ bodyWidth, morphology }) {
     centerPointCount = 0;
 
     boundaryWidths.length = 0;
+
     directionXs.length = 0;
+
     directionYs.length = 0;
   }
 

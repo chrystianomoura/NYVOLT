@@ -11,14 +11,22 @@ import {
   simplifyOrthogonalPoints,
 } from "./snake/centerline.js";
 
-import { buildRoundedPathGeometry } from "./snake/rounded-path.js";
+import {
+  buildRoundedPathGeometry,
+  getRoundedPathFrontFrame,
+} from "./snake/rounded-path.js";
 
 import { sampleRoundedPathAtLength } from "./snake/path-sampling.js";
 
 import { createSnakeCanvas } from "./snake/canvas.js";
+
 import { createSnakeMorphology } from "./snake/morphology.js";
+
 import { createSnakeGeometry } from "./snake/geometry.js";
+
 import { createSnakeBodyRenderer } from "./snake/body.js";
+
+import { createSnakeHeadCanvasRenderer } from "./snake/head-canvas.js";
 
 import {
   createHead,
@@ -109,6 +117,12 @@ export function createSnakeRenderer({ layer }) {
   });
 
   /* =======================================================
+     CABEÇA CANVAS
+     ======================================================= */
+
+  const headCanvasRenderer = createSnakeHeadCanvasRenderer();
+
+  /* =======================================================
      SVG
      ======================================================= */
 
@@ -119,7 +133,7 @@ export function createSnakeRenderer({ layer }) {
   let latestPathGeometry = null;
 
   /* =======================================================
-     CABEÇA
+     CABEÇA DOM
      ======================================================= */
 
   let headElement = null;
@@ -142,6 +156,7 @@ export function createSnakeRenderer({ layer }) {
     const path = document.createElementNS(SVG_NAMESPACE, "path");
 
     path.classList.add(className);
+
     path.setAttribute("fill", "none");
 
     return path;
@@ -161,9 +176,11 @@ export function createSnakeRenderer({ layer }) {
     const geometryPath = createBodyPath("snake-body-path");
 
     geometryPath.style.opacity = "0";
+
     geometryPath.style.pointerEvents = "none";
 
     svg.appendChild(geometryPath);
+
     layer.appendChild(svg);
 
     bodySvg = svg;
@@ -204,6 +221,7 @@ export function createSnakeRenderer({ layer }) {
     latestSnakeLength = snake.length;
 
     latestBodyLength = 0;
+
     latestPathGeometry = null;
 
     morphology.reset(snake.length);
@@ -232,6 +250,10 @@ export function createSnakeRenderer({ layer }) {
 
     hideHeadClone(headCloneElement);
 
+    headElement.style.visibility = "hidden";
+
+    headCloneElement.style.visibility = "hidden";
+
     updateSegmentShapes(snake, direction);
 
     updateHeadDirection(direction);
@@ -257,8 +279,16 @@ export function createSnakeRenderer({ layer }) {
     return Math.max(minimum, Math.min(value, maximum));
   }
 
+  function buildGeometry(snake, previousSnake, progress) {
+    const rawPoints = buildBodyPoints(snake, previousSnake, progress);
+
+    const points = simplifyOrthogonalPoints(rawPoints);
+
+    return buildRoundedPathGeometry(points);
+  }
+
   /* =======================================================
-     CABEÇA
+     CABEÇA DOM
      ======================================================= */
 
   function renderHead(snake, previousSnake, progress) {
@@ -300,6 +330,28 @@ export function createSnakeRenderer({ layer }) {
   }
 
   /* =======================================================
+     CABEÇA CANVAS
+     ======================================================= */
+
+  function renderCanvasHead(pathGeometry) {
+    const frontFrame = getRoundedPathFrontFrame(pathGeometry);
+
+    if (!frontFrame) {
+      return;
+    }
+
+    headCanvasRenderer.render({
+      context: bodyContext,
+
+      position: frontFrame.position,
+
+      tangent: frontFrame.tangent,
+
+      color: bodyColor,
+    });
+  }
+
+  /* =======================================================
      RENDERIZAÇÃO
      ======================================================= */
 
@@ -312,11 +364,7 @@ export function createSnakeRenderer({ layer }) {
 
     renderHead(snake, previousSnake, progress);
 
-    const rawPoints = buildBodyPoints(snake, previousSnake, progress);
-
-    const points = simplifyOrthogonalPoints(rawPoints);
-
-    const pathGeometry = buildRoundedPathGeometry(points);
+    const pathGeometry = buildGeometry(snake, previousSnake, progress);
 
     latestPathGeometry = pathGeometry;
 
@@ -330,10 +378,15 @@ export function createSnakeRenderer({ layer }) {
 
     bodyRenderer.render({
       context: bodyContext,
+
       color: bodyColor,
+
       visualGrowth,
+
       pathGeometry,
     });
+
+    renderCanvasHead(pathGeometry);
   }
 
   /* =======================================================
@@ -367,6 +420,7 @@ export function createSnakeRenderer({ layer }) {
 
     return {
       x: point.x,
+
       y: point.y,
     };
   }

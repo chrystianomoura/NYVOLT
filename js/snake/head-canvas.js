@@ -1,30 +1,39 @@
 /* =========================================================
-   JARAKA — SNAKE HEAD CANVAS
+   JARAKA — HEAD CANVAS
    ========================================================= */
 
 /* =========================================================
    CONSTANTES
    ========================================================= */
 
-const HEAD_LENGTH = 0.78;
-const HEAD_WIDTH = 1.08;
+const HEAD_LENGTH = 0.88;
+const HEAD_HALF_LENGTH = HEAD_LENGTH * 0.5;
 
-const NECK_WIDTH_FACTOR = 0.92;
+const NECK_WIDTH = 0.92;
+const CHEEK_WIDTH = 0.92;
+const FRONT_WIDTH = 0.78;
+
+const CHEEK_POSITION = 0.42;
+const FRONT_POSITION = 0.82;
+
+const EYE_FORWARD = 0.56;
+const EYE_SIDE = 0.25;
+
+const EYE_RADIUS = 0.082;
+const PUPIL_RADIUS = 0.036;
+const PUPIL_FORWARD = 0.024;
 
 const MIN_VECTOR_LENGTH = 0.000001;
 
 /* =========================================================
-   UTILITÁRIOS
+   VETORES
    ========================================================= */
 
 function normalizeVector(x, y) {
   const length = Math.hypot(x, y);
 
   if (length <= MIN_VECTOR_LENGTH) {
-    return {
-      x: 0,
-      y: 1,
-    };
+    return null;
   }
 
   return {
@@ -33,156 +42,256 @@ function normalizeVector(x, y) {
   };
 }
 
+function getFrame(tangent) {
+  const forward = normalizeVector(tangent.x, tangent.y);
+
+  if (!forward) {
+    return null;
+  }
+
+  return {
+    forward,
+
+    normal: {
+      x: -forward.y,
+
+      y: forward.x,
+    },
+  };
+}
+
 /* =========================================================
-   RENDERER
+   PONTOS
    ========================================================= */
 
-export function createSnakeHeadCanvasRenderer({ bodyWidth }) {
-  /* =======================================================
-     GEOMETRIA
-     ======================================================= */
+function offsetPoint(origin, forward, normal, forwardDistance, normalDistance) {
+  return {
+    x: origin.x + forward.x * forwardDistance + normal.x * normalDistance,
 
-  function buildHeadGeometry({ position, tangent }) {
-    const direction = normalizeVector(tangent.x, tangent.y);
+    y: origin.y + forward.y * forwardDistance + normal.y * normalDistance,
+  };
+}
 
-    const normal = {
-      x: -direction.y,
-      y: direction.x,
-    };
+/* =========================================================
+   SILHUETA
+   ========================================================= */
 
-    const neckRadius = bodyWidth * NECK_WIDTH_FACTOR * 0.5;
+function drawHeadShape(context, position, forward, normal, color) {
+  const halfNeck = NECK_WIDTH * 0.5;
 
-    const headRadius = HEAD_WIDTH * 0.5;
+  const halfCheek = CHEEK_WIDTH * 0.5;
 
-    const frontCenter = {
-      x: position.x + direction.x * HEAD_LENGTH,
+  const halfFront = FRONT_WIDTH * 0.5;
 
-      y: position.y + direction.y * HEAD_LENGTH,
-    };
+  const rearDistance = -HEAD_HALF_LENGTH;
 
-    const neckLeft = {
-      x: position.x + normal.x * neckRadius,
+  const cheekDistance = -HEAD_HALF_LENGTH + HEAD_LENGTH * CHEEK_POSITION;
 
-      y: position.y + normal.y * neckRadius,
-    };
+  const frontDistance = -HEAD_HALF_LENGTH + HEAD_LENGTH * FRONT_POSITION;
 
-    const neckRight = {
-      x: position.x - normal.x * neckRadius,
+  const noseDistance = HEAD_HALF_LENGTH;
 
-      y: position.y - normal.y * neckRadius,
-    };
+  const neckLeft = offsetPoint(
+    position,
+    forward,
+    normal,
+    rearDistance,
+    halfNeck,
+  );
 
-    const frontLeft = {
-      x: frontCenter.x + normal.x * headRadius,
+  const neckRight = offsetPoint(
+    position,
+    forward,
+    normal,
+    rearDistance,
+    -halfNeck,
+  );
 
-      y: frontCenter.y + normal.y * headRadius,
-    };
+  const cheekLeft = offsetPoint(
+    position,
+    forward,
+    normal,
+    cheekDistance,
+    halfCheek,
+  );
 
-    const frontRight = {
-      x: frontCenter.x - normal.x * headRadius,
+  const cheekRight = offsetPoint(
+    position,
+    forward,
+    normal,
+    cheekDistance,
+    -halfCheek,
+  );
 
-      y: frontCenter.y - normal.y * headRadius,
-    };
+  const frontLeft = offsetPoint(
+    position,
+    forward,
+    normal,
+    frontDistance,
+    halfFront,
+  );
 
-    return {
-      direction,
-      normal,
-      frontCenter,
-      neckLeft,
-      neckRight,
-      frontLeft,
-      frontRight,
-      headRadius,
-    };
-  }
+  const frontRight = offsetPoint(
+    position,
+    forward,
+    normal,
+    frontDistance,
+    -halfFront,
+  );
 
-  /* =======================================================
-     DESENHO
-     ======================================================= */
+  const nose = offsetPoint(position, forward, normal, noseDistance, 0);
 
-  function drawHeadShape(context, geometry) {
-    const {
-      direction,
-      normal,
-      frontCenter,
-      neckLeft,
-      neckRight,
-      frontLeft,
-      frontRight,
-      headRadius,
-    } = geometry;
+  context.beginPath();
 
-    const curvePull = HEAD_LENGTH * 0.42;
+  context.moveTo(neckLeft.x, neckLeft.y);
 
-    const leftControl = {
-      x: neckLeft.x + direction.x * curvePull,
+  context.bezierCurveTo(
+    neckLeft.x + forward.x * HEAD_LENGTH * 0.16,
 
-      y: neckLeft.y + direction.y * curvePull,
-    };
+    neckLeft.y + forward.y * HEAD_LENGTH * 0.16,
 
-    const rightControl = {
-      x: neckRight.x + direction.x * curvePull,
+    cheekLeft.x - forward.x * HEAD_LENGTH * 0.12,
 
-      y: neckRight.y + direction.y * curvePull,
-    };
+    cheekLeft.y - forward.y * HEAD_LENGTH * 0.12,
 
-    context.beginPath();
+    cheekLeft.x,
+    cheekLeft.y,
+  );
 
-    context.moveTo(neckLeft.x, neckLeft.y);
+  context.bezierCurveTo(
+    cheekLeft.x + forward.x * HEAD_LENGTH * 0.18,
 
-    context.quadraticCurveTo(
-      leftControl.x,
-      leftControl.y,
-      frontLeft.x,
-      frontLeft.y,
-    );
+    cheekLeft.y + forward.y * HEAD_LENGTH * 0.18,
 
-    context.arc(
-      frontCenter.x,
-      frontCenter.y,
-      headRadius,
-      Math.atan2(frontLeft.y - frontCenter.y, frontLeft.x - frontCenter.x),
-      Math.atan2(frontRight.y - frontCenter.y, frontRight.x - frontCenter.x),
-      false,
-    );
+    frontLeft.x - forward.x * HEAD_LENGTH * 0.08,
 
-    context.quadraticCurveTo(
-      rightControl.x,
-      rightControl.y,
-      neckRight.x,
-      neckRight.y,
-    );
+    frontLeft.y - forward.y * HEAD_LENGTH * 0.08,
 
-    context.closePath();
-    context.fill();
-  }
+    frontLeft.x,
+    frontLeft.y,
+  );
 
-  /* =======================================================
-     RENDERIZAÇÃO
-     ======================================================= */
+  context.bezierCurveTo(
+    frontLeft.x + forward.x * HEAD_LENGTH * 0.08,
 
+    frontLeft.y + forward.y * HEAD_LENGTH * 0.08,
+
+    nose.x + normal.x * FRONT_WIDTH * 0.18 - forward.x * HEAD_LENGTH * 0.04,
+
+    nose.y + normal.y * FRONT_WIDTH * 0.18 - forward.y * HEAD_LENGTH * 0.04,
+
+    nose.x,
+    nose.y,
+  );
+
+  context.bezierCurveTo(
+    nose.x - normal.x * FRONT_WIDTH * 0.18 - forward.x * HEAD_LENGTH * 0.04,
+
+    nose.y - normal.y * FRONT_WIDTH * 0.18 - forward.y * HEAD_LENGTH * 0.04,
+
+    frontRight.x + forward.x * HEAD_LENGTH * 0.08,
+
+    frontRight.y + forward.y * HEAD_LENGTH * 0.08,
+
+    frontRight.x,
+    frontRight.y,
+  );
+
+  context.bezierCurveTo(
+    frontRight.x - forward.x * HEAD_LENGTH * 0.08,
+
+    frontRight.y - forward.y * HEAD_LENGTH * 0.08,
+
+    cheekRight.x + forward.x * HEAD_LENGTH * 0.18,
+
+    cheekRight.y + forward.y * HEAD_LENGTH * 0.18,
+
+    cheekRight.x,
+    cheekRight.y,
+  );
+
+  context.bezierCurveTo(
+    cheekRight.x - forward.x * HEAD_LENGTH * 0.12,
+
+    cheekRight.y - forward.y * HEAD_LENGTH * 0.12,
+
+    neckRight.x + forward.x * HEAD_LENGTH * 0.16,
+
+    neckRight.y + forward.y * HEAD_LENGTH * 0.16,
+
+    neckRight.x,
+    neckRight.y,
+  );
+
+  context.lineTo(neckLeft.x, neckLeft.y);
+
+  context.closePath();
+
+  context.fillStyle = color;
+
+  context.fill();
+}
+
+/* =========================================================
+   OLHOS
+   ========================================================= */
+
+function drawEye(context, position, forward, normal, side) {
+  const eyeDistance = -HEAD_HALF_LENGTH + HEAD_LENGTH * EYE_FORWARD;
+
+  const eye = offsetPoint(
+    position,
+    forward,
+    normal,
+    eyeDistance,
+    CHEEK_WIDTH * EYE_SIDE * side,
+  );
+
+  context.beginPath();
+
+  context.arc(eye.x, eye.y, EYE_RADIUS, 0, Math.PI * 2);
+
+  context.fillStyle = "#f4f4ef";
+
+  context.fill();
+
+  const pupil = offsetPoint(eye, forward, normal, PUPIL_FORWARD, 0);
+
+  context.beginPath();
+
+  context.arc(pupil.x, pupil.y, PUPIL_RADIUS, 0, Math.PI * 2);
+
+  context.fillStyle = "#101414";
+
+  context.fill();
+}
+
+function drawEyes(context, position, forward, normal) {
+  drawEye(context, position, forward, normal, 1);
+
+  drawEye(context, position, forward, normal, -1);
+}
+
+/* =========================================================
+   RENDERIZAÇÃO
+   ========================================================= */
+
+export function createSnakeHeadCanvasRenderer() {
   function render({ context, position, tangent, color }) {
     if (!context || !position || !tangent) {
       return;
     }
 
-    const geometry = buildHeadGeometry({
-      position,
-      tangent,
-    });
+    const frame = getFrame(tangent);
 
-    context.save();
+    if (!frame) {
+      return;
+    }
 
-    context.fillStyle = color;
+    drawHeadShape(context, position, frame.forward, frame.normal, color);
 
-    drawHeadShape(context, geometry);
-
-    context.restore();
+    drawEyes(context, position, frame.forward, frame.normal);
   }
-
-  /* =======================================================
-     API
-     ======================================================= */
 
   return {
     render,
