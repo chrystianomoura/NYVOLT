@@ -11,12 +11,8 @@ import { sampleRoundedPathAtLength } from "./path-sampling.js";
    ========================================================= */
 
 const CORNER_RADIUS = 0.18;
-
-const FRONT_CORNER_RADIUS = 0.42;
-const FRONT_CORNER_SEGMENT_RATIO = 0.48;
-
-const FRONT_CORNER_FULL_INFLUENCE = 0.85;
-const FRONT_CORNER_END_INFLUENCE = 1.65;
+const CORNER_SEGMENT_RATIO = 0.32;
+const CORNER_SATURATION_START = 0.72;
 
 const FRONT_FRAME_WINDOW = 0.42;
 const FRONT_FRAME_SAMPLE_COUNT = 24;
@@ -64,20 +60,6 @@ function clamp(value, minimum, maximum) {
   return Math.min(Math.max(value, minimum), maximum);
 }
 
-function lerp(start, end, progress) {
-  return start + (end - start) * progress;
-}
-
-function smoothstep(start, end, value) {
-  if (Math.abs(end - start) <= EPSILON) {
-    return value < start ? 0 : 1;
-  }
-
-  const progress = clamp((value - start) / (end - start), 0, 1);
-
-  return progress * progress * (3 - 2 * progress);
-}
-
 function smootherstep(start, end, value) {
   if (Math.abs(end - start) <= EPSILON) {
     return value < start ? 0 : 1;
@@ -93,34 +75,37 @@ function getManhattanDistance(first, second) {
 }
 
 /* =========================================================
-   CURVA FRONTAL
+   SATURAÇÃO
    ========================================================= */
 
-function getFrontCornerInfluence(distanceFromFront) {
-  const release = smoothstep(
-    FRONT_CORNER_FULL_INFLUENCE,
-    FRONT_CORNER_END_INFLUENCE,
-    distanceFromFront,
-  );
+function getSaturatedCornerRadius(availableRadius) {
+  if (availableRadius <= EPSILON) {
+    return 0;
+  }
 
-  return 1 - release;
-}
+  if (availableRadius >= CORNER_RADIUS) {
+    return CORNER_RADIUS;
+  }
 
-function getCornerProfile(distanceFromFront) {
-  const influence = getFrontCornerInfluence(distanceFromFront);
+  const saturationStart = CORNER_RADIUS * CORNER_SATURATION_START;
 
-  return {
-    radius: lerp(CORNER_RADIUS, FRONT_CORNER_RADIUS, influence),
+  if (availableRadius <= saturationStart) {
+    return availableRadius;
+  }
 
-    segmentRatio: lerp(0.32, FRONT_CORNER_SEGMENT_RATIO, influence),
-  };
+  const progress =
+    (availableRadius - saturationStart) / (CORNER_RADIUS - saturationStart);
+
+  const smoothedProgress = smootherstep(0, 1, progress);
+
+  return saturationStart + (CORNER_RADIUS - saturationStart) * smoothedProgress;
 }
 
 /* =========================================================
    CURVAS
    ========================================================= */
 
-function getCornerGeometry(previous, current, next, distanceFromFront) {
+function getCornerGeometry(previous, current, next) {
   const incomingLength = getManhattanDistance(previous, current);
 
   const outgoingLength = getManhattanDistance(current, next);
@@ -129,18 +114,27 @@ function getCornerGeometry(previous, current, next, distanceFromFront) {
     return null;
   }
 
-  const profile = getCornerProfile(distanceFromFront);
+  const availableIncomingRadius = incomingLength * CORNER_SEGMENT_RATIO;
 
-  const radius = Math.min(
-    profile.radius,
-    incomingLength * profile.segmentRatio,
-    outgoingLength * profile.segmentRatio,
+  const availableOutgoingRadius = outgoingLength * CORNER_SEGMENT_RATIO;
+
+  const availableRadius = Math.min(
+    availableIncomingRadius,
+    availableOutgoingRadius,
   );
 
+  const radius = getSaturatedCornerRadius(availableRadius);
+
+  if (radius <= EPSILON) {
+    return null;
+  }
+
   const incomingX = current.x - previous.x;
+
   const incomingY = current.y - previous.y;
 
   const outgoingX = next.x - current.x;
+
   const outgoingY = next.y - current.y;
 
   const incomingUnitX = incomingX === 0 ? 0 : Math.sign(incomingX);
@@ -242,8 +236,6 @@ export function buildRoundedPathGeometry(points) {
 
   let totalLength = 0;
 
-  let distanceFromFront = 0;
-
   let cursor = {
     x: points[0].x,
     y: points[0].y,
@@ -293,8 +285,6 @@ export function buildRoundedPathGeometry(points) {
 
     const next = points[index + 1];
 
-    distanceFromFront += getManhattanDistance(previous, current);
-
     const incomingHorizontal = Math.abs(previous.y - current.y) < EPSILON;
 
     const outgoingHorizontal = Math.abs(current.y - next.y) < EPSILON;
@@ -305,12 +295,7 @@ export function buildRoundedPathGeometry(points) {
       continue;
     }
 
-    const geometry = getCornerGeometry(
-      previous,
-      current,
-      next,
-      distanceFromFront,
-    );
+    const geometry = getCornerGeometry(previous, current, next);
 
     if (!geometry) {
       appendLine(current);
@@ -369,6 +354,7 @@ function getLocalPathTangent(pathGeometry, distance) {
 
   return normalizeVector(
     beforePoint.x - afterPoint.x,
+
     beforePoint.y - afterPoint.y,
   );
 }
@@ -463,6 +449,7 @@ function interpolateDirection(from, to, progress) {
 
   return {
     x: Math.cos(angle),
+
     y: Math.sin(angle),
   };
 }
@@ -527,6 +514,7 @@ function getFallbackFrontFrame(pathGeometry) {
 
   const position = {
     x: segment.start.x,
+
     y: segment.start.y,
   };
 
@@ -553,7 +541,8 @@ function getFallbackFrontFrame(pathGeometry) {
 
   return {
     position,
-    tangent,
+    bodyTangent: tangent,
+    headTangent: tangent,
   };
 }
 
@@ -566,22 +555,28 @@ export function getRoundedPathFrontFrame(pathGeometry) {
 
   const position = {
     x: segments[0].start.x,
+
     y: segments[0].start.y,
   };
 
-  const turnTangent = getFrontTurnTangent(pathGeometry, position);
+  const localTangent = getLocalPathTangent(pathGeometry, 0);
 
   const integratedTangent = getIntegratedFrontTangent(pathGeometry);
 
-  const tangent = turnTangent ?? integratedTangent;
+  const turnTangent = getFrontTurnTangent(pathGeometry, position);
 
-  if (!tangent) {
+  const bodyTangent = localTangent ?? integratedTangent;
+
+  const headTangent = turnTangent ?? integratedTangent ?? localTangent;
+
+  if (!bodyTangent || !headTangent) {
     return getFallbackFrontFrame(pathGeometry);
   }
 
   return {
     position,
-    tangent,
+    bodyTangent,
+    headTangent,
   };
 }
 

@@ -23,7 +23,27 @@ const EYE_RADIUS = 0.082;
 const PUPIL_RADIUS = 0.036;
 const PUPIL_FORWARD = 0.024;
 
+const SPINE_SAMPLE_COUNT = 12;
+
 const MIN_VECTOR_LENGTH = 0.000001;
+
+/* =========================================================
+   UTILITÁRIOS
+   ========================================================= */
+
+function clamp(value, minimum, maximum) {
+  return Math.min(Math.max(value, minimum), maximum);
+}
+
+function smoothstep(start, end, value) {
+  if (Math.abs(end - start) <= MIN_VECTOR_LENGTH) {
+    return value < start ? 0 : 1;
+  }
+
+  const progress = clamp((value - start) / (end - start), 0, 1);
+
+  return progress * progress * (3 - 2 * progress);
+}
 
 /* =========================================================
    VETORES
@@ -42,33 +62,126 @@ function normalizeVector(x, y) {
   };
 }
 
-function getFrame(tangent) {
-  const forward = normalizeVector(tangent.x, tangent.y);
+function interpolateDirection(from, to, progress) {
+  const fromAngle = Math.atan2(from.y, from.x);
 
-  if (!forward) {
-    return null;
+  const toAngle = Math.atan2(to.y, to.x);
+
+  let delta = toAngle - fromAngle;
+
+  while (delta > Math.PI) {
+    delta -= Math.PI * 2;
   }
 
+  while (delta < -Math.PI) {
+    delta += Math.PI * 2;
+  }
+
+  const angle = fromAngle + delta * progress;
+
   return {
-    forward,
+    x: Math.cos(angle),
+    y: Math.sin(angle),
+  };
+}
 
-    normal: {
-      x: -forward.y,
+function getDirectionAt(bodyForward, headForward, progress) {
+  const bendProgress = smoothstep(0, 1, progress);
 
-      y: forward.x,
-    },
+  return interpolateDirection(bodyForward, headForward, bendProgress);
+}
+
+function getNormal(direction) {
+  return {
+    x: -direction.y,
+    y: direction.x,
   };
 }
 
 /* =========================================================
-   PONTOS
+   ESPINHA
    ========================================================= */
 
-function offsetPoint(origin, forward, normal, forwardDistance, normalDistance) {
-  return {
-    x: origin.x + forward.x * forwardDistance + normal.x * normalDistance,
+function integrateSpine(
+  position,
+  bodyForward,
+  headForward,
+  startProgress,
+  endProgress,
+) {
+  if (Math.abs(endProgress - startProgress) <= MIN_VECTOR_LENGTH) {
+    return {
+      x: position.x,
+      y: position.y,
+    };
+  }
 
-    y: origin.y + forward.y * forwardDistance + normal.y * normalDistance,
+  const directionSign = endProgress > startProgress ? 1 : -1;
+
+  const distance = Math.abs(endProgress - startProgress) * HEAD_LENGTH;
+
+  const steps = Math.max(
+    1,
+    Math.ceil(SPINE_SAMPLE_COUNT * Math.abs(endProgress - startProgress)),
+  );
+
+  const stepDistance = distance / steps;
+
+  let x = position.x;
+  let y = position.y;
+
+  for (let index = 0; index < steps; index += 1) {
+    const localProgress = (index + 0.5) / steps;
+
+    const progress =
+      startProgress + (endProgress - startProgress) * localProgress;
+
+    const direction = getDirectionAt(bodyForward, headForward, progress);
+
+    x += direction.x * stepDistance * directionSign;
+
+    y += direction.y * stepDistance * directionSign;
+  }
+
+  return {
+    x,
+    y,
+  };
+}
+
+function getSpinePoint(position, bodyForward, headForward, progress) {
+  return integrateSpine(position, bodyForward, headForward, 0.5, progress);
+}
+
+/* =========================================================
+   SEÇÃO
+   ========================================================= */
+
+function getSection(position, bodyForward, headForward, progress, width) {
+  const center = getSpinePoint(position, bodyForward, headForward, progress);
+
+  const direction = getDirectionAt(bodyForward, headForward, progress);
+
+  const normal = getNormal(direction);
+
+  const halfWidth = width * 0.5;
+
+  return {
+    center,
+    direction,
+    normal,
+
+    left: {
+      x: center.x + normal.x * halfWidth,
+
+      y: center.y + normal.y * halfWidth,
+    },
+
+    right: {
+      x: center.x - normal.x * halfWidth,
+
+      y: center.y - normal.y * halfWidth,
+    },
   };
 }
 
@@ -76,154 +189,118 @@ function offsetPoint(origin, forward, normal, forwardDistance, normalDistance) {
    SILHUETA
    ========================================================= */
 
-function drawHeadShape(context, position, forward, normal, color) {
-  const halfNeck = NECK_WIDTH * 0.5;
+function drawHeadShape(context, position, bodyForward, headForward, color) {
+  const neck = getSection(position, bodyForward, headForward, 0, NECK_WIDTH);
 
-  const halfCheek = CHEEK_WIDTH * 0.5;
-
-  const halfFront = FRONT_WIDTH * 0.5;
-
-  const rearDistance = -HEAD_HALF_LENGTH;
-
-  const cheekDistance = -HEAD_HALF_LENGTH + HEAD_LENGTH * CHEEK_POSITION;
-
-  const frontDistance = -HEAD_HALF_LENGTH + HEAD_LENGTH * FRONT_POSITION;
-
-  const noseDistance = HEAD_HALF_LENGTH;
-
-  const neckLeft = offsetPoint(
+  const cheek = getSection(
     position,
-    forward,
-    normal,
-    rearDistance,
-    halfNeck,
+    bodyForward,
+    headForward,
+    CHEEK_POSITION,
+    CHEEK_WIDTH,
   );
 
-  const neckRight = offsetPoint(
+  const front = getSection(
     position,
-    forward,
-    normal,
-    rearDistance,
-    -halfNeck,
+    bodyForward,
+    headForward,
+    FRONT_POSITION,
+    FRONT_WIDTH,
   );
 
-  const cheekLeft = offsetPoint(
-    position,
-    forward,
-    normal,
-    cheekDistance,
-    halfCheek,
-  );
-
-  const cheekRight = offsetPoint(
-    position,
-    forward,
-    normal,
-    cheekDistance,
-    -halfCheek,
-  );
-
-  const frontLeft = offsetPoint(
-    position,
-    forward,
-    normal,
-    frontDistance,
-    halfFront,
-  );
-
-  const frontRight = offsetPoint(
-    position,
-    forward,
-    normal,
-    frontDistance,
-    -halfFront,
-  );
-
-  const nose = offsetPoint(position, forward, normal, noseDistance, 0);
+  const nose = getSpinePoint(position, bodyForward, headForward, 1);
 
   context.beginPath();
 
-  context.moveTo(neckLeft.x, neckLeft.y);
+  context.moveTo(neck.left.x, neck.left.y);
 
   context.bezierCurveTo(
-    neckLeft.x + forward.x * HEAD_LENGTH * 0.16,
+    neck.left.x + neck.direction.x * HEAD_LENGTH * 0.16,
 
-    neckLeft.y + forward.y * HEAD_LENGTH * 0.16,
+    neck.left.y + neck.direction.y * HEAD_LENGTH * 0.16,
 
-    cheekLeft.x - forward.x * HEAD_LENGTH * 0.12,
+    cheek.left.x - cheek.direction.x * HEAD_LENGTH * 0.12,
 
-    cheekLeft.y - forward.y * HEAD_LENGTH * 0.12,
+    cheek.left.y - cheek.direction.y * HEAD_LENGTH * 0.12,
 
-    cheekLeft.x,
-    cheekLeft.y,
+    cheek.left.x,
+    cheek.left.y,
   );
 
   context.bezierCurveTo(
-    cheekLeft.x + forward.x * HEAD_LENGTH * 0.18,
+    cheek.left.x + cheek.direction.x * HEAD_LENGTH * 0.18,
 
-    cheekLeft.y + forward.y * HEAD_LENGTH * 0.18,
+    cheek.left.y + cheek.direction.y * HEAD_LENGTH * 0.18,
 
-    frontLeft.x - forward.x * HEAD_LENGTH * 0.08,
+    front.left.x - front.direction.x * HEAD_LENGTH * 0.08,
 
-    frontLeft.y - forward.y * HEAD_LENGTH * 0.08,
+    front.left.y - front.direction.y * HEAD_LENGTH * 0.08,
 
-    frontLeft.x,
-    frontLeft.y,
+    front.left.x,
+    front.left.y,
   );
 
   context.bezierCurveTo(
-    frontLeft.x + forward.x * HEAD_LENGTH * 0.08,
+    front.left.x + front.direction.x * HEAD_LENGTH * 0.08,
 
-    frontLeft.y + forward.y * HEAD_LENGTH * 0.08,
+    front.left.y + front.direction.y * HEAD_LENGTH * 0.08,
 
-    nose.x + normal.x * FRONT_WIDTH * 0.18 - forward.x * HEAD_LENGTH * 0.04,
+    nose.x +
+      front.normal.x * FRONT_WIDTH * 0.18 -
+      headForward.x * HEAD_LENGTH * 0.04,
 
-    nose.y + normal.y * FRONT_WIDTH * 0.18 - forward.y * HEAD_LENGTH * 0.04,
+    nose.y +
+      front.normal.y * FRONT_WIDTH * 0.18 -
+      headForward.y * HEAD_LENGTH * 0.04,
 
     nose.x,
     nose.y,
   );
 
   context.bezierCurveTo(
-    nose.x - normal.x * FRONT_WIDTH * 0.18 - forward.x * HEAD_LENGTH * 0.04,
+    nose.x -
+      front.normal.x * FRONT_WIDTH * 0.18 -
+      headForward.x * HEAD_LENGTH * 0.04,
 
-    nose.y - normal.y * FRONT_WIDTH * 0.18 - forward.y * HEAD_LENGTH * 0.04,
+    nose.y -
+      front.normal.y * FRONT_WIDTH * 0.18 -
+      headForward.y * HEAD_LENGTH * 0.04,
 
-    frontRight.x + forward.x * HEAD_LENGTH * 0.08,
+    front.right.x + front.direction.x * HEAD_LENGTH * 0.08,
 
-    frontRight.y + forward.y * HEAD_LENGTH * 0.08,
+    front.right.y + front.direction.y * HEAD_LENGTH * 0.08,
 
-    frontRight.x,
-    frontRight.y,
+    front.right.x,
+    front.right.y,
   );
 
   context.bezierCurveTo(
-    frontRight.x - forward.x * HEAD_LENGTH * 0.08,
+    front.right.x - front.direction.x * HEAD_LENGTH * 0.08,
 
-    frontRight.y - forward.y * HEAD_LENGTH * 0.08,
+    front.right.y - front.direction.y * HEAD_LENGTH * 0.08,
 
-    cheekRight.x + forward.x * HEAD_LENGTH * 0.18,
+    cheek.right.x + cheek.direction.x * HEAD_LENGTH * 0.18,
 
-    cheekRight.y + forward.y * HEAD_LENGTH * 0.18,
+    cheek.right.y + cheek.direction.y * HEAD_LENGTH * 0.18,
 
-    cheekRight.x,
-    cheekRight.y,
+    cheek.right.x,
+    cheek.right.y,
   );
 
   context.bezierCurveTo(
-    cheekRight.x - forward.x * HEAD_LENGTH * 0.12,
+    cheek.right.x - cheek.direction.x * HEAD_LENGTH * 0.12,
 
-    cheekRight.y - forward.y * HEAD_LENGTH * 0.12,
+    cheek.right.y - cheek.direction.y * HEAD_LENGTH * 0.12,
 
-    neckRight.x + forward.x * HEAD_LENGTH * 0.16,
+    neck.right.x + neck.direction.x * HEAD_LENGTH * 0.16,
 
-    neckRight.y + forward.y * HEAD_LENGTH * 0.16,
+    neck.right.y + neck.direction.y * HEAD_LENGTH * 0.16,
 
-    neckRight.x,
-    neckRight.y,
+    neck.right.x,
+    neck.right.y,
   );
 
-  context.lineTo(neckLeft.x, neckLeft.y);
+  context.lineTo(neck.left.x, neck.left.y);
 
   context.closePath();
 
@@ -236,16 +313,20 @@ function drawHeadShape(context, position, forward, normal, color) {
    OLHOS
    ========================================================= */
 
-function drawEye(context, position, forward, normal, side) {
-  const eyeDistance = -HEAD_HALF_LENGTH + HEAD_LENGTH * EYE_FORWARD;
-
-  const eye = offsetPoint(
+function drawEye(context, position, bodyForward, headForward, side) {
+  const section = getSection(
     position,
-    forward,
-    normal,
-    eyeDistance,
-    CHEEK_WIDTH * EYE_SIDE * side,
+    bodyForward,
+    headForward,
+    EYE_FORWARD,
+    CHEEK_WIDTH,
   );
+
+  const eye = {
+    x: section.center.x + section.normal.x * CHEEK_WIDTH * EYE_SIDE * side,
+
+    y: section.center.y + section.normal.y * CHEEK_WIDTH * EYE_SIDE * side,
+  };
 
   context.beginPath();
 
@@ -255,7 +336,11 @@ function drawEye(context, position, forward, normal, side) {
 
   context.fill();
 
-  const pupil = offsetPoint(eye, forward, normal, PUPIL_FORWARD, 0);
+  const pupil = {
+    x: eye.x + section.direction.x * PUPIL_FORWARD,
+
+    y: eye.y + section.direction.y * PUPIL_FORWARD,
+  };
 
   context.beginPath();
 
@@ -266,10 +351,10 @@ function drawEye(context, position, forward, normal, side) {
   context.fill();
 }
 
-function drawEyes(context, position, forward, normal) {
-  drawEye(context, position, forward, normal, 1);
+function drawEyes(context, position, bodyForward, headForward) {
+  drawEye(context, position, bodyForward, headForward, 1);
 
-  drawEye(context, position, forward, normal, -1);
+  drawEye(context, position, bodyForward, headForward, -1);
 }
 
 /* =========================================================
@@ -277,20 +362,22 @@ function drawEyes(context, position, forward, normal) {
    ========================================================= */
 
 export function createSnakeHeadCanvasRenderer() {
-  function render({ context, position, tangent, color }) {
-    if (!context || !position || !tangent) {
+  function render({ context, position, bodyTangent, headTangent, color }) {
+    if (!context || !position || !bodyTangent || !headTangent) {
       return;
     }
 
-    const frame = getFrame(tangent);
+    const bodyForward = normalizeVector(bodyTangent.x, bodyTangent.y);
 
-    if (!frame) {
+    const headForward = normalizeVector(headTangent.x, headTangent.y);
+
+    if (!bodyForward || !headForward) {
       return;
     }
 
-    drawHeadShape(context, position, frame.forward, frame.normal, color);
+    drawHeadShape(context, position, bodyForward, headForward, color);
 
-    drawEyes(context, position, frame.forward, frame.normal);
+    drawEyes(context, position, bodyForward, headForward);
   }
 
   return {

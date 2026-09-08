@@ -6,7 +6,32 @@
    CONSTANTES
    ========================================================= */
 
-const CURVE_JOIN_THRESHOLD = 0.002;
+const MIN_VECTOR_LENGTH = 0.000001;
+const MITER_LIMIT = 1.35;
+
+/* =========================================================
+   UTILITÁRIOS
+   ========================================================= */
+
+function normalizeVector(x, y) {
+  const length = Math.hypot(x, y);
+
+  if (length <= MIN_VECTOR_LENGTH) {
+    return null;
+  }
+
+  return {
+    x: x / length,
+    y: y / length,
+  };
+}
+
+function getNormal(directionX, directionY) {
+  return {
+    x: -directionY,
+    y: directionX,
+  };
+}
 
 /* =========================================================
    RENDERER
@@ -20,15 +45,11 @@ export function createSnakeBodyRenderer({
   bodyWidth,
 }) {
   /* =======================================================
-     SUPERFÍCIE
+     NORMAIS
      ======================================================= */
 
-  function buildSurfaceSegments(context) {
-    const centerPoints = geometry.getCenterPoints();
-
+  function getBoundaryNormal(index) {
     const centerPointCount = geometry.getCenterPointCount();
-
-    const boundaryWidths = geometry.getBoundaryWidths();
 
     const directionXs = geometry.getDirectionXs();
 
@@ -37,64 +58,66 @@ export function createSnakeBodyRenderer({
     const segmentCount = centerPointCount - 1;
 
     if (segmentCount <= 0) {
-      return;
+      return null;
     }
 
-    context.beginPath();
-
-    for (let index = 0; index < segmentCount; index += 1) {
-      const directionX = directionXs[index];
-
-      const directionY = directionYs[index];
-
-      if (directionX === 0 && directionY === 0) {
-        continue;
-      }
-
-      const start = centerPoints[index];
-
-      const end = centerPoints[index + 1];
-
-      const normalX = -directionY;
-
-      const normalY = directionX;
-
-      const startRadius = boundaryWidths[index] * 0.5;
-
-      const endRadius = boundaryWidths[index + 1] * 0.5;
-
-      const startOffsetX = normalX * startRadius;
-
-      const startOffsetY = normalY * startRadius;
-
-      const endOffsetX = normalX * endRadius;
-
-      const endOffsetY = normalY * endRadius;
-
-      context.moveTo(start.x + startOffsetX, start.y + startOffsetY);
-
-      context.lineTo(end.x + endOffsetX, end.y + endOffsetY);
-
-      context.lineTo(end.x - endOffsetX, end.y - endOffsetY);
-
-      context.lineTo(start.x - startOffsetX, start.y - startOffsetY);
-
-      context.closePath();
+    if (index <= 0) {
+      return getNormal(directionXs[0], directionYs[0]);
     }
 
-    context.fill();
+    if (index >= centerPointCount - 1) {
+      return getNormal(
+        directionXs[segmentCount - 1],
+        directionYs[segmentCount - 1],
+      );
+    }
+
+    const previousDirectionX = directionXs[index - 1];
+
+    const previousDirectionY = directionYs[index - 1];
+
+    const nextDirectionX = directionXs[index];
+
+    const nextDirectionY = directionYs[index];
+
+    const previousValid =
+      Math.abs(previousDirectionX) > MIN_VECTOR_LENGTH ||
+      Math.abs(previousDirectionY) > MIN_VECTOR_LENGTH;
+
+    const nextValid =
+      Math.abs(nextDirectionX) > MIN_VECTOR_LENGTH ||
+      Math.abs(nextDirectionY) > MIN_VECTOR_LENGTH;
+
+    if (!previousValid && !nextValid) {
+      return null;
+    }
+
+    if (!previousValid) {
+      return getNormal(nextDirectionX, nextDirectionY);
+    }
+
+    if (!nextValid) {
+      return getNormal(previousDirectionX, previousDirectionY);
+    }
+
+    const previousNormal = getNormal(previousDirectionX, previousDirectionY);
+
+    const nextNormal = getNormal(nextDirectionX, nextDirectionY);
+
+    const averagedNormal = normalizeVector(
+      previousNormal.x + nextNormal.x,
+      previousNormal.y + nextNormal.y,
+    );
+
+    return averagedNormal ?? previousNormal;
   }
 
   /* =======================================================
-     CURVAS
+     MITER
      ======================================================= */
 
-  function fillCurveJoints(context) {
-    const centerPoints = geometry.getCenterPoints();
-
+  function getBoundaryOffset(index, radius) {
     const centerPointCount = geometry.getCenterPointCount();
-
-    const boundaryWidths = geometry.getBoundaryWidths();
 
     const directionXs = geometry.getDirectionXs();
 
@@ -102,52 +125,125 @@ export function createSnakeBodyRenderer({
 
     const segmentCount = centerPointCount - 1;
 
-    if (segmentCount <= 1) {
-      return;
+    const normal = getBoundaryNormal(index);
+
+    if (!normal) {
+      return {
+        x: 0,
+        y: 0,
+      };
     }
 
-    context.beginPath();
+    if (index <= 0 || index >= centerPointCount - 1) {
+      return {
+        x: normal.x * radius,
+        y: normal.y * radius,
+      };
+    }
 
-    let hasJoint = false;
+    const previousDirectionX = directionXs[index - 1];
 
-    for (let index = 1; index < segmentCount; index += 1) {
-      const previousDirectionX = directionXs[index - 1];
+    const previousDirectionY = directionYs[index - 1];
 
-      const previousDirectionY = directionYs[index - 1];
+    const previousValid =
+      Math.abs(previousDirectionX) > MIN_VECTOR_LENGTH ||
+      Math.abs(previousDirectionY) > MIN_VECTOR_LENGTH;
 
-      const nextDirectionX = directionXs[index];
+    if (!previousValid) {
+      return {
+        x: normal.x * radius,
+        y: normal.y * radius,
+      };
+    }
 
-      const nextDirectionY = directionYs[index];
+    const previousNormal = getNormal(previousDirectionX, previousDirectionY);
 
-      if (
-        (previousDirectionX === 0 && previousDirectionY === 0) ||
-        (nextDirectionX === 0 && nextDirectionY === 0)
-      ) {
-        continue;
-      }
+    const alignment = normal.x * previousNormal.x + normal.y * previousNormal.y;
 
-      const cross =
-        previousDirectionX * nextDirectionY -
-        previousDirectionY * nextDirectionX;
+    if (alignment <= MIN_VECTOR_LENGTH) {
+      return {
+        x: normal.x * radius,
+        y: normal.y * radius,
+      };
+    }
 
-      if (Math.abs(cross) <= CURVE_JOIN_THRESHOLD) {
-        continue;
-      }
+    const miterScale = Math.min(1 / alignment, MITER_LIMIT);
 
-      const point = centerPoints[index];
+    return {
+      x: normal.x * radius * miterScale,
+      y: normal.y * radius * miterScale,
+    };
+  }
+
+  /* =======================================================
+     BORDAS
+     ======================================================= */
+
+  function buildBoundaryPoints() {
+    const centerPoints = geometry.getCenterPoints();
+
+    const centerPointCount = geometry.getCenterPointCount();
+
+    const boundaryWidths = geometry.getBoundaryWidths();
+
+    const leftPoints = new Array(centerPointCount);
+
+    const rightPoints = new Array(centerPointCount);
+
+    for (let index = 0; index < centerPointCount; index += 1) {
+      const center = centerPoints[index];
 
       const radius = boundaryWidths[index] * 0.5;
 
-      context.moveTo(point.x + radius, point.y);
+      const offset = getBoundaryOffset(index, radius);
 
-      context.arc(point.x, point.y, radius, 0, Math.PI * 2);
+      leftPoints[index] = {
+        x: center.x + offset.x,
+        y: center.y + offset.y,
+      };
 
-      hasJoint = true;
+      rightPoints[index] = {
+        x: center.x - offset.x,
+        y: center.y - offset.y,
+      };
     }
 
-    if (hasJoint) {
-      context.fill();
+    return {
+      leftPoints,
+      rightPoints,
+    };
+  }
+
+  /* =======================================================
+     SUPERFÍCIE
+     ======================================================= */
+
+  function buildBodySurface(context) {
+    const centerPointCount = geometry.getCenterPointCount();
+
+    if (centerPointCount < 2) {
+      return;
     }
+
+    const { leftPoints, rightPoints } = buildBoundaryPoints();
+
+    const lastIndex = centerPointCount - 1;
+
+    context.beginPath();
+
+    context.moveTo(leftPoints[0].x, leftPoints[0].y);
+
+    for (let index = 1; index <= lastIndex; index += 1) {
+      context.lineTo(leftPoints[index].x, leftPoints[index].y);
+    }
+
+    for (let index = lastIndex; index >= 0; index -= 1) {
+      context.lineTo(rightPoints[index].x, rightPoints[index].y);
+    }
+
+    context.closePath();
+
+    context.fill();
   }
 
   /* =======================================================
@@ -177,19 +273,27 @@ export function createSnakeBodyRenderer({
 
     context.beginPath();
 
+    let hasCap = false;
+
     if (start && Number.isFinite(startRadius) && startRadius > 0) {
       context.moveTo(start.x + startRadius, start.y);
 
       context.arc(start.x, start.y, startRadius, 0, Math.PI * 2);
+
+      hasCap = true;
     }
 
     if (tip && Number.isFinite(tipRadius) && tipRadius > 0) {
       context.moveTo(tip.x + tipRadius, tip.y);
 
       context.arc(tip.x, tip.y, tipRadius, 0, Math.PI * 2);
+
+      hasCap = true;
     }
 
-    context.fill();
+    if (hasCap) {
+      context.fill();
+    }
   }
 
   /* =======================================================
@@ -253,8 +357,8 @@ export function createSnakeBodyRenderer({
 
     context.translate(offsetX, offsetY);
 
-    buildSurfaceSegments(context);
-    fillCurveJoints(context);
+    buildBodySurface(context);
+
     fillBodyCaps(context);
 
     context.restore();
@@ -280,7 +384,7 @@ export function createSnakeBodyRenderer({
     });
 
     for (
-      let tileY = verticalRange.minimumTile;
+      let tileY = horizontalRange.minimumTile;
       tileY <= verticalRange.maximumTile;
       tileY += 1
     ) {

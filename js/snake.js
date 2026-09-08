@@ -345,7 +345,9 @@ export function createSnakeRenderer({ layer }) {
 
       position: frontFrame.position,
 
-      tangent: frontFrame.tangent,
+      bodyTangent: frontFrame.bodyTangent,
+
+      headTangent: frontFrame.headTangent,
 
       color: bodyColor,
     });
