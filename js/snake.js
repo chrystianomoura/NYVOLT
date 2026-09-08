@@ -4,13 +4,16 @@
 
 import { GRID_COLUMNS, GRID_ROWS } from "./game/config.js";
 
+import { getVisualHead } from "./snake/head-position.js";
+
 import {
-  getVisualHead,
   buildBodyPoints,
   simplifyOrthogonalPoints,
-  buildRoundedPathGeometry,
-  sampleRoundedPathAtLength,
-} from "./snake/path.js";
+} from "./snake/centerline.js";
+
+import { buildRoundedPathGeometry } from "./snake/rounded-path.js";
+
+import { sampleRoundedPathAtLength } from "./snake/path-sampling.js";
 
 import { createSnakeCanvas } from "./snake/canvas.js";
 import { createSnakeMorphology } from "./snake/morphology.js";

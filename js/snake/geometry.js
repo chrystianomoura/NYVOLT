@@ -2,7 +2,7 @@
    JARAKA — SNAKE GEOMETRY
    ========================================================= */
 
-import { sampleRoundedPathAtLength } from "./path.js";
+import { sampleRoundedPathAtLength } from "./path-sampling.js";
 
 /* =========================================================
    CONSTANTES
