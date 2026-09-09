@@ -174,6 +174,8 @@ export function createSnakeRenderer({ layer }) {
       return;
     }
 
+    const eatingState = eatingController.getState();
+
     headRenderer.render({
       context,
 
@@ -184,6 +186,8 @@ export function createSnakeRenderer({ layer }) {
       headTangent: frontFrame.headTangent,
 
       color: bodyColor,
+
+      eatingState,
     });
   }
 
