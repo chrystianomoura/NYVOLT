@@ -7,10 +7,13 @@
    ========================================================= */
 
 /*
- * O rato entra próximo do pico da mordida,
- * depois de a boca já ter aberto por completo.
+ * O rato desaparece durante a abertura da mordida,
+ * antes de a cabeça avançar visualmente sobre ele.
+ *
+ * A boca ainda está abrindo neste instante,
+ * fazendo o desaparecimento parecer parte da mordida.
  */
-const MOUSE_ENTER_TIME = 220;
+const MOUSE_ENTER_TIME = 150;
 
 /*
  * Entrada do estado predatório.
@@ -23,20 +26,21 @@ const ATTACK_RISE_END = 160;
 const BITE_OPEN_END = 190;
 
 /*
- * Mantemos a mordida aberta por tempo suficiente
- * para que a boca e as presas sejam percebidas.
+ * A boca permanece totalmente aberta
+ * por 160 ms.
  */
-const ATTACK_HOLD_END = 310;
+const ATTACK_HOLD_END = 350;
 
 /*
- * A boca termina de fechar.
+ * A boca fecha em 85 ms.
  */
-const BITE_CLOSE_END = 470;
+const BITE_CLOSE_END = 435;
 
 /*
- * A expressão completa retorna ao estado normal.
+ * A expressão predatória continua retornando
+ * suavemente ao estado normal.
  */
-const ATTACK_END = 600;
+const ATTACK_END = 750;
 
 /* =========================================================
    CONSTANTES INTERNAS

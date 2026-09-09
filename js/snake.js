@@ -26,6 +26,8 @@ import { createSnakeHeadCanvasRenderer } from "./snake/head-canvas.js";
 
 import { createSnakeEatingController } from "./snake/eating.js";
 
+import { createSnakeDigestionRenderer } from "./snake/digestion.js";
+
 /* =========================================================
    EVENTOS
    ========================================================= */
@@ -96,6 +98,16 @@ export function createSnakeRenderer({ layer }) {
   });
 
   /* =======================================================
+     DIGESTÃO
+     ======================================================= */
+
+  const digestionRenderer = createSnakeDigestionRenderer({
+    geometry,
+
+    bodyWidth: BODY_WIDTH,
+  });
+
+  /* =======================================================
      CABEÇA
      ======================================================= */
 
@@ -143,6 +155,8 @@ export function createSnakeRenderer({ layer }) {
     geometry.reset();
 
     eatingController.reset();
+
+    digestionRenderer.reset();
 
     snakeCanvas.create();
 
@@ -202,12 +216,19 @@ export function createSnakeRenderer({ layer }) {
 
     const pathGeometry = buildGeometry(snake, previousSnake, progress);
 
-    eatingController.update(performance.now());
+    const timestamp = performance.now();
+
+    eatingController.update(timestamp);
+
+    digestionRenderer.update(timestamp);
 
     snakeCanvas.clear();
 
     const visualGrowth = morphology.updateGrowth(snake.length);
 
+    /*
+     * 1. Corpo normal.
+     */
     bodyRenderer.render({
       context,
 
@@ -218,6 +239,24 @@ export function createSnakeRenderer({ layer }) {
       pathGeometry,
     });
 
+    /*
+     * 2. Protuberância do rato.
+     *
+     * É independente da morfologia
+     * e não altera a largura real
+     * do corpo.
+     */
+    digestionRenderer.render({
+      context,
+
+      pathGeometry,
+
+      color: bodyColor,
+    });
+
+    /*
+     * 3. Cabeça por cima.
+     */
     renderHead(pathGeometry);
   }
 
@@ -229,7 +268,24 @@ export function createSnakeRenderer({ layer }) {
     eatingController.start({
       timestamp: performance.now(),
 
-      onMouseEnter,
+      onMouseEnter: () => {
+        /*
+         * O rato desapareceu.
+         *
+         * Nesse mesmo instante nasce
+         * a protuberância dentro do corpo.
+         */
+        digestionRenderer.start(performance.now());
+
+        /*
+         * Mantém o comportamento original
+         * do jogo responsável pelo rato,
+         * pontuação, crescimento etc.
+         */
+        if (typeof onMouseEnter === "function") {
+          onMouseEnter();
+        }
+      },
     });
   }
 
