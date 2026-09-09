@@ -1,17 +1,17 @@
 /* =========================================================
-   JARAKA — FOOD
-   Gerenciamento do alimento durante a partida
+   NYVOLT — ENERGY ORB
+   Gerenciamento do orbe de energia durante a partida
 
    Responsabilidades:
-   - manter a posição lógica do rato;
+   - manter a posição lógica do orbe;
    - encontrar células livres;
    - escolher uma nova posição;
    - atualizar a posição visual;
    - controlar o primeiro spawn;
-   - controlar consumo e respawn.
+   - controlar coleta e respawn.
 
-   O foodController e o mouseController compartilham
-   exatamente o mesmo objeto de posição.
+   O controlador lógico e o renderer do orbe
+   compartilham o mesmo objeto de posição.
    ========================================================= */
 
 import { GRID_COLUMNS, GRID_ROWS } from "./config.js";
@@ -24,10 +24,13 @@ import { isSamePosition } from "./collision.js";
 
 export function createFoodController({
   element,
-  actor,
+
   position,
-  mouseController,
+
+  orbController,
+
   getSnake,
+
   isGameOver,
 }) {
   /* =======================================================
@@ -43,16 +46,16 @@ export function createFoodController({
       return;
     }
 
-    element.style.setProperty("--mouse-x", position.x);
+    element.style.setProperty("--orb-x", position.x);
 
-    element.style.setProperty("--mouse-y", position.y);
+    element.style.setProperty("--orb-y", position.y);
   }
 
   /* =======================================================
-     COBRA
+     NYVOLT
      ======================================================= */
 
-  function isSnakePosition(candidate) {
+  function isNyvoltPosition(candidate) {
     const snake = getSnake();
 
     return snake.some((segment) => isSamePosition(segment, candidate));
@@ -72,7 +75,7 @@ export function createFoodController({
           y,
         };
 
-        if (isSnakePosition(candidate)) {
+        if (isNyvoltPosition(candidate)) {
           continue;
         }
 
@@ -108,6 +111,14 @@ export function createFoodController({
   }
 
   /* =======================================================
+     ATUALIZAÇÃO VISUAL
+     ======================================================= */
+
+  function updateOrb() {
+    orbController?.update();
+  }
+
+  /* =======================================================
      PRIMEIRO SPAWN
      ======================================================= */
 
@@ -122,41 +133,9 @@ export function createFoodController({
       return false;
     }
 
-    const snake = getSnake();
-
-    mouseController.update(snake[0]);
+    updateOrb();
 
     return true;
-  }
-
-  /* =======================================================
-     RESET VISUAL DO ATOR
-     ======================================================= */
-
-  function resetActor() {
-    if (!actor) {
-      return;
-    }
-
-    actor
-      .getAnimations()
-      .filter(
-        (animation) =>
-          animation instanceof Animation &&
-          animation.effect instanceof KeyframeEffect &&
-          animation.effect.target === actor,
-      )
-      .forEach((animation) => {
-        animation.cancel();
-      });
-
-    actor.style.opacity = "";
-
-    actor.style.scale = "";
-
-    actor.style.visibility = "";
-
-    actor.style.transform = "";
   }
 
   /* =======================================================
@@ -164,13 +143,19 @@ export function createFoodController({
      ======================================================= */
 
   function resetVisualState() {
-    resetActor();
-
-    const snake = getSnake();
-
-    if (snake.length > 0) {
-      mouseController.update(snake[0]);
+    if (!element) {
+      return;
     }
+
+    element.style.opacity = "";
+
+    element.style.scale = "";
+
+    element.style.visibility = "";
+
+    element.style.removeProperty("transform-origin");
+
+    updateOrb();
   }
 
   /* =======================================================
@@ -179,99 +164,37 @@ export function createFoodController({
 
   function respawnInstantly() {
     if (isGameOver()) {
-      return;
+      return false;
     }
-
-    const snake = getSnake();
-
-    if (!actor) {
-      const spawned = moveToRandomCell();
-
-      if (!spawned) {
-        return;
-      }
-
-      mouseController.update(snake[0]);
-
-      return;
-    }
-
-    actor.style.visibility = "hidden";
 
     const spawned = moveToRandomCell();
 
     if (!spawned) {
-      actor.style.visibility = "";
-
-      return;
+      return false;
     }
 
-    mouseController.update(snake[0]);
+    updateOrb();
 
-    resetActor();
-
-    actor.style.visibility = "visible";
+    return true;
   }
 
   /* =======================================================
-     CONSUMO
+     COLETA
      ======================================================= */
 
   function consumeVisually() {
     if (isGameOver()) {
-      return;
+      return false;
     }
 
-    if (!actor) {
-      respawnInstantly();
-
-      return;
-    }
-
-    const animation = actor.animate(
-      [
-        {
-          opacity: 1,
-          scale: "1",
-          offset: 0,
-        },
-
-        {
-          opacity: 1,
-          scale: "0.86",
-          offset: 0.32,
-        },
-
-        {
-          opacity: 0.82,
-          scale: "0.52",
-          offset: 0.7,
-        },
-
-        {
-          opacity: 0,
-          scale: "0.12",
-          offset: 1,
-        },
-      ],
-      {
-        duration: 150,
-
-        easing: "cubic-bezier(0.4, 0, 0.2, 1)",
-
-        fill: "forwards",
-      },
-    );
-
-    animation.finished
-      .then(() => {
-        if (isGameOver()) {
-          return;
-        }
-
-        respawnInstantly();
-      })
-      .catch(() => {});
+    /*
+     * O orbe é absorvido imediatamente
+     * e reaparece em uma nova célula livre.
+     *
+     * A resposta visual da coleta acontece
+     * no núcleo interno da própria NYVOLT.
+     */
+    return respawnInstantly();
   }
 
   /* =======================================================
@@ -280,9 +203,13 @@ export function createFoodController({
 
   return {
     getPosition,
+
     spawnInitial,
+
     updatePosition,
+
     consumeVisually,
+
     resetVisualState,
   };
 }

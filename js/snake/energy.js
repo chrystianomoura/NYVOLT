@@ -1,5 +1,6 @@
 /* =========================================================
-   JARAKA — SNAKE EATING
+   NYVOLT — ENERGY ABSORPTION
+   Controle temporal do pulso interno de energia
    ========================================================= */
 
 /* =========================================================
@@ -7,40 +8,19 @@
    ========================================================= */
 
 /*
- * O rato desaparece durante a abertura da mordida,
- * antes de a cabeça avançar visualmente sobre ele.
- *
- * A boca ainda está abrindo neste instante,
- * fazendo o desaparecimento parecer parte da mordida.
+ * Crescimento rápido da descarga.
  */
-const MOUSE_ENTER_TIME = 150;
+const ENERGY_RISE_END = 90;
 
 /*
- * Entrada do estado predatório.
+ * Pequeno instante de intensidade máxima.
  */
-const ATTACK_RISE_END = 160;
+const ENERGY_HOLD_END = 150;
 
 /*
- * A boca chega à abertura máxima.
+ * Dissipação completa do pulso.
  */
-const BITE_OPEN_END = 190;
-
-/*
- * A boca permanece totalmente aberta
- * por 160 ms.
- */
-const ATTACK_HOLD_END = 350;
-
-/*
- * A boca fecha em 85 ms.
- */
-const BITE_CLOSE_END = 435;
-
-/*
- * A expressão predatória continua retornando
- * suavemente ao estado normal.
- */
-const ATTACK_END = 750;
+const ENERGY_END = 480;
 
 /* =========================================================
    CONSTANTES INTERNAS
@@ -67,80 +47,63 @@ function smoothstep(start, end, value) {
 }
 
 /* =========================================================
-   FACTORY
+   CONTROLLER
    ========================================================= */
 
-export function createSnakeEatingController() {
+export function createEnergyController() {
   let active = false;
 
   let startedAt = 0;
 
   let elapsed = 0;
 
-  let onMouseEnter = null;
-
   /* =======================================================
-     CALLBACK — RATO
+     COLETA
      ======================================================= */
 
-  function triggerMouseEnter() {
-    if (!onMouseEnter) {
+  function triggerCollection(callback) {
+    if (typeof callback !== "function") {
       return;
     }
-
-    const callback = onMouseEnter;
-
-    onMouseEnter = null;
 
     callback();
   }
 
   /* =======================================================
-     ESTADO VISUAL — EXPRESSÃO
+     PROGRESSO DO PULSO
      ======================================================= */
 
-  function getAttackProgress() {
+  function getEnergyProgress() {
     if (!active) {
       return 0;
     }
 
-    if (elapsed <= ATTACK_RISE_END) {
-      return smoothstep(0, ATTACK_RISE_END, elapsed);
+    /*
+     * Entrada rápida.
+     *
+     * 0 → 1
+     */
+    if (elapsed <= ENERGY_RISE_END) {
+      return smoothstep(0, ENERGY_RISE_END, elapsed);
     }
 
-    if (elapsed <= ATTACK_HOLD_END) {
+    /*
+     * Pico curto.
+     */
+    if (elapsed <= ENERGY_HOLD_END) {
       return 1;
     }
 
-    return 1 - smoothstep(ATTACK_HOLD_END, ATTACK_END, elapsed);
+    /*
+     * Dissipação.
+     *
+     * 1 → 0
+     */
+    return 1 - smoothstep(ENERGY_HOLD_END, ENERGY_END, elapsed);
   }
 
   /* =======================================================
-     ESTADO VISUAL — BOCA
-     ======================================================= */
-
-  function getBiteProgress() {
-    if (!active) {
-      return 0;
-    }
-
-    if (elapsed <= BITE_OPEN_END) {
-      return smoothstep(0, BITE_OPEN_END, elapsed);
-    }
-
-    if (elapsed <= ATTACK_HOLD_END) {
-      return 1;
-    }
-
-    if (elapsed <= BITE_CLOSE_END) {
-      return 1 - smoothstep(ATTACK_HOLD_END, BITE_CLOSE_END, elapsed);
-    }
-
-    return 0;
-  }
-
-  /* =======================================================
-     ESTADO PÚBLICO
+     ESTADO
      ======================================================= */
 
   function getState() {
@@ -149,9 +112,7 @@ export function createSnakeEatingController() {
 
       elapsed,
 
-      attackProgress: getAttackProgress(),
-
-      biteProgress: getBiteProgress(),
+      energyProgress: getEnergyProgress(),
     };
   }
 
@@ -162,7 +123,7 @@ export function createSnakeEatingController() {
   function start({
     timestamp = performance.now(),
 
-    onMouseEnter: mouseEnterCallback,
+    onCollect,
   } = {}) {
     active = true;
 
@@ -170,8 +131,14 @@ export function createSnakeEatingController() {
 
     elapsed = 0;
 
-    onMouseEnter =
-      typeof mouseEnterCallback === "function" ? mouseEnterCallback : null;
+    /*
+     * A coleta acontece imediatamente.
+     *
+     * O pulso visual começa no mesmo instante
+     * e é renderizado exclusivamente dentro
+     * do corpo da NYVOLT.
+     */
+    triggerCollection(onCollect);
   }
 
   /* =======================================================
@@ -185,16 +152,10 @@ export function createSnakeEatingController() {
 
     elapsed = Math.max(0, timestamp - startedAt);
 
-    if (elapsed >= MOUSE_ENTER_TIME) {
-      triggerMouseEnter();
-    }
-
-    if (elapsed >= ATTACK_END) {
+    if (elapsed >= ENERGY_END) {
       active = false;
 
       elapsed = 0;
-
-      onMouseEnter = null;
     }
   }
 
@@ -208,8 +169,6 @@ export function createSnakeEatingController() {
     startedAt = 0;
 
     elapsed = 0;
-
-    onMouseEnter = null;
   }
 
   /* =======================================================
@@ -218,8 +177,11 @@ export function createSnakeEatingController() {
 
   return {
     start,
+
     update,
+
     reset,
+
     getState,
   };
 }

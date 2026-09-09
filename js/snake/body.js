@@ -1,5 +1,5 @@
 /* =========================================================
-   JARAKA — SNAKE BODY
+   NYVOLT — BODY
    ========================================================= */
 
 /* =========================================================
@@ -8,6 +8,14 @@
 
 const MIN_VECTOR_LENGTH = 0.000001;
 const MITER_LIMIT = 1.35;
+
+/*
+ * Intensidade máxima do pulso de brilho.
+ *
+ * 0.32 = aproxima a cor original em 32%
+ * do branco no pico da absorção.
+ */
+const ENERGY_BRIGHTNESS = 0.32;
 
 /* =========================================================
    UTILITÁRIOS
@@ -31,6 +39,80 @@ function getNormal(directionX, directionY) {
     x: -directionY,
     y: directionX,
   };
+}
+
+function clamp(value, minimum, maximum) {
+  return Math.min(Math.max(value, minimum), maximum);
+}
+
+/* =========================================================
+   COR
+   ========================================================= */
+
+function hexToRgb(color) {
+  if (typeof color !== "string" || !color.startsWith("#")) {
+    return null;
+  }
+
+  const normalized = color.slice(1);
+
+  if (normalized.length !== 6) {
+    return null;
+  }
+
+  const r = Number.parseInt(normalized.slice(0, 2), 16);
+
+  const g = Number.parseInt(normalized.slice(2, 4), 16);
+
+  const b = Number.parseInt(normalized.slice(4, 6), 16);
+
+  if (!Number.isFinite(r) || !Number.isFinite(g) || !Number.isFinite(b)) {
+    return null;
+  }
+
+  return {
+    r,
+    g,
+    b,
+  };
+}
+
+function mixChannel(start, end, amount) {
+  return Math.round(start + (end - start) * amount);
+}
+
+function rgbToHex(r, g, b) {
+  return `#${[r, g, b]
+    .map((channel) => clamp(channel, 0, 255).toString(16).padStart(2, "0"))
+    .join("")}`;
+}
+
+/* =========================================================
+   PULSO DE BRILHO INTERNO
+   ========================================================= */
+
+function getEnergyColor(color, energyProgress) {
+  const energy = clamp(energyProgress, 0, 1);
+
+  if (energy <= 0) {
+    return color;
+  }
+
+  const rgb = hexToRgb(color);
+
+  if (!rgb) {
+    return color;
+  }
+
+  const brightness = energy * ENERGY_BRIGHTNESS;
+
+  return rgbToHex(
+    mixChannel(rgb.r, 255, brightness),
+
+    mixChannel(rgb.g, 255, brightness),
+
+    mixChannel(rgb.b, 255, brightness),
+  );
 }
 
 /* =========================================================
@@ -106,6 +188,7 @@ export function createSnakeBodyRenderer({
 
     const averagedNormal = normalizeVector(
       previousNormal.x + nextNormal.x,
+
       previousNormal.y + nextNormal.y,
     );
 
@@ -135,6 +218,7 @@ export function createSnakeBodyRenderer({
     if (index <= 0 || index >= centerPointCount - 1) {
       return {
         x: normal.x * radius,
+
         y: normal.y * radius,
       };
     }
@@ -150,6 +234,7 @@ export function createSnakeBodyRenderer({
     if (!previousValid) {
       return {
         x: normal.x * radius,
+
         y: normal.y * radius,
       };
     }
@@ -161,6 +246,7 @@ export function createSnakeBodyRenderer({
     if (alignment <= MIN_VECTOR_LENGTH) {
       return {
         x: normal.x * radius,
+
         y: normal.y * radius,
       };
     }
@@ -178,7 +264,7 @@ export function createSnakeBodyRenderer({
      BORDAS
      ======================================================= */
 
-  function buildBoundaryPoints() {
+  function buildBoundaryPoints(widthScale = 1) {
     const centerPoints = geometry.getCenterPoints();
 
     const centerPointCount = geometry.getCenterPointCount();
@@ -192,7 +278,7 @@ export function createSnakeBodyRenderer({
     for (let index = 0; index < centerPointCount; index += 1) {
       const center = centerPoints[index];
 
-      const radius = boundaryWidths[index] * 0.5;
+      const radius = boundaryWidths[index] * 0.5 * widthScale;
 
       const offset = getBoundaryOffset(index, radius);
 
@@ -219,14 +305,14 @@ export function createSnakeBodyRenderer({
      SUPERFÍCIE
      ======================================================= */
 
-  function buildBodySurface(context) {
+  function buildBodySurface(context, widthScale = 1) {
     const centerPointCount = geometry.getCenterPointCount();
 
     if (centerPointCount < 2) {
       return;
     }
 
-    const { leftPoints, rightPoints } = buildBoundaryPoints();
+    const { leftPoints, rightPoints } = buildBoundaryPoints(widthScale);
 
     const lastIndex = centerPointCount - 1;
 
@@ -243,7 +329,6 @@ export function createSnakeBodyRenderer({
     }
 
     context.closePath();
-
     context.fill();
   }
 
@@ -251,7 +336,7 @@ export function createSnakeBodyRenderer({
      EXTREMIDADES
      ======================================================= */
 
-  function fillBodyCaps(context) {
+  function fillBodyCaps(context, widthScale = 1) {
     const centerPoints = geometry.getCenterPoints();
 
     const centerPointCount = geometry.getCenterPointCount();
@@ -264,13 +349,13 @@ export function createSnakeBodyRenderer({
 
     const start = centerPoints[0];
 
-    const startRadius = boundaryWidths[0] * 0.5;
+    const startRadius = boundaryWidths[0] * 0.5 * widthScale;
 
     const tipIndex = centerPointCount - 1;
 
     const tip = centerPoints[tipIndex];
 
-    const tipRadius = boundaryWidths[tipIndex] * 0.5;
+    const tipRadius = boundaryWidths[tipIndex] * 0.5 * widthScale;
 
     context.beginPath();
 
@@ -312,7 +397,6 @@ export function createSnakeBodyRenderer({
 
     let minimumX = Infinity;
     let maximumX = -Infinity;
-
     let minimumY = Infinity;
     let maximumY = -Infinity;
 
@@ -353,19 +437,23 @@ export function createSnakeBodyRenderer({
     };
   }
 
-  function drawProjection(context, offsetX, offsetY) {
+  /* =======================================================
+     PROJEÇÃO
+     ======================================================= */
+
+  function drawBodyProjection({ context, offsetX, offsetY }) {
     context.save();
 
     context.translate(offsetX, offsetY);
 
-    buildBodySurface(context);
+    buildBodySurface(context, 1);
 
-    fillBodyCaps(context);
+    fillBodyCaps(context, 1);
 
     context.restore();
   }
 
-  function renderWrapped(context) {
+  function renderWrappedBody({ context }) {
     const bounds = getBodyBounds();
 
     if (!bounds) {
@@ -398,16 +486,62 @@ export function createSnakeBodyRenderer({
         tileX <= horizontalRange.maximumTile;
         tileX += 1
       ) {
-        drawProjection(context, tileX * columns, tileY * rows);
+        drawBodyProjection({
+          context,
+
+          offsetX: tileX * columns,
+
+          offsetY: tileY * rows,
+        });
       }
     }
+  }
+
+  /* =======================================================
+     NYVOLT
+     ======================================================= */
+
+  function renderBody({ context, color, energyProgress = 0 }) {
+    /*
+     * O corpo continua sendo desenhado uma única vez.
+     *
+     * Não há:
+     *
+     * - alteração de opacidade;
+     * - alteração de largura;
+     * - segunda camada;
+     * - glow;
+     * - sombra;
+     * - composite "lighter".
+     *
+     * Somente a própria cor recebe mais luminosidade
+     * enquanto energyProgress estiver ativo.
+     */
+    const energyColor = getEnergyColor(color, energyProgress);
+
+    context.save();
+
+    context.globalAlpha = 1;
+    context.fillStyle = energyColor;
+
+    renderWrappedBody({
+      context,
+    });
+
+    context.restore();
   }
 
   /* =======================================================
      RENDERIZAÇÃO
      ======================================================= */
 
-  function render({ context, color, visualGrowth, pathGeometry }) {
+  function render({
+    context,
+    color,
+    visualGrowth,
+    pathGeometry,
+    energyProgress = 0,
+  }) {
     if (!context) {
       return false;
     }
@@ -429,8 +563,11 @@ export function createSnakeBodyRenderer({
 
     const pointCount = geometry.prepare({
       pathGeometry,
+
       tailStart,
+
       tailLength,
+
       visualGrowth,
     });
 
@@ -438,9 +575,11 @@ export function createSnakeBodyRenderer({
       return false;
     }
 
-    context.fillStyle = color;
-
-    renderWrapped(context);
+    renderBody({
+      context,
+      color,
+      energyProgress,
+    });
 
     return true;
   }

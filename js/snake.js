@@ -1,5 +1,5 @@
 /* =========================================================
-   JARAKA — SNAKE
+   NYVOLT — SNAKE
    ========================================================= */
 
 import { GRID_COLUMNS, GRID_ROWS } from "./game/config.js";
@@ -19,21 +19,37 @@ import { createSnakeGeometry } from "./snake/geometry.js";
 
 import { createSnakeBodyRenderer } from "./snake/body.js";
 
-import { createSnakeEatingController } from "./snake/eating.js";
-
-import { createSnakeDigestionRenderer } from "./snake/digestion.js";
+import { createEnergyController } from "./snake/energy.js";
 
 /* =========================================================
    EVENTOS
    ========================================================= */
 
-const THEME_CHANGE_EVENT = "jaraka:themechange";
+const THEME_CHANGE_EVENT = "nyvolt:themechange";
 
 /* =========================================================
    CORPO
    ========================================================= */
 
 const BODY_WIDTH = 0.92;
+
+/* =========================================================
+   CONTATO COM O ORBE
+   ========================================================= */
+
+/*
+ * A colisão lógica acontece no início do novo tick,
+ * antes de a NYVOLT terminar visualmente o movimento
+ * até a nova célula.
+ *
+ * Este valor determina aproximadamente o instante
+ * da interpolação em que a frente da NYVOLT toca
+ * visualmente o orbe.
+ *
+ * 0 = início do movimento
+ * 1 = fim do movimento
+ */
+const ENERGY_CONTACT_PROGRESS = 0.12;
 
 /* =========================================================
    RENDERER
@@ -55,6 +71,8 @@ export function createSnakeRenderer({ layer }) {
   let context = null;
 
   let bodyColor = "";
+
+  let highlightColor = "";
 
   /* =======================================================
      MORFOLOGIA
@@ -93,35 +111,38 @@ export function createSnakeRenderer({ layer }) {
   });
 
   /* =======================================================
-     DIGESTÃO
+     ENERGIA
      ======================================================= */
 
-  const digestionRenderer = createSnakeDigestionRenderer({
-    geometry,
+  const energyController = createEnergyController();
 
-    bodyWidth: BODY_WIDTH,
-  });
-
-  /* =======================================================
-     ALIMENTAÇÃO
-     ======================================================= */
-
-  const eatingController = createSnakeEatingController();
+  /*
+   * A coleta lógica pode ser detectada antes
+   * do contato visual entre a NYVOLT e o orbe.
+   *
+   * Enquanto houver uma absorção pendente,
+   * o orbe permanece visível.
+   */
+  let pendingEnergyCollection = null;
 
   /* =======================================================
      TEMA
      ======================================================= */
 
-  function resolveBodyColor() {
+  function resolveBodyColors() {
     const styles = getComputedStyle(layer);
 
-    const color = styles.getPropertyValue("--snake-main").trim();
+    const main = styles.getPropertyValue("--snake-main").trim();
 
-    bodyColor = color || "#39ff6a";
+    const highlight = styles.getPropertyValue("--snake-highlight").trim();
+
+    bodyColor = main || "#39ff6a";
+
+    highlightColor = highlight || bodyColor;
   }
 
   function handleThemeChange() {
-    resolveBodyColor();
+    resolveBodyColors();
   }
 
   /* =======================================================
@@ -143,15 +164,15 @@ export function createSnakeRenderer({ layer }) {
 
     geometry.reset();
 
-    eatingController.reset();
+    energyController.reset();
 
-    digestionRenderer.reset();
+    pendingEnergyCollection = null;
 
     snakeCanvas.create();
 
     context = snakeCanvas.getContext();
 
-    resolveBodyColor();
+    resolveBodyColors();
   }
 
   /* =======================================================
@@ -167,6 +188,41 @@ export function createSnakeRenderer({ layer }) {
   }
 
   /* =======================================================
+     CONTATO VISUAL COM O ORBE
+     ======================================================= */
+
+  function updatePendingEnergyCollection(progress, timestamp) {
+    if (!pendingEnergyCollection) {
+      return;
+    }
+
+    if (progress < ENERGY_CONTACT_PROGRESS) {
+      return;
+    }
+
+    const onCollect = pendingEnergyCollection;
+
+    /*
+     * Limpamos antes de executar o callback
+     * para impedir qualquer disparo duplicado.
+     */
+    pendingEnergyCollection = null;
+
+    /*
+     * A partir deste instante:
+     *
+     * 1. o orbe é coletado;
+     * 2. o orbe reaparece em outra célula;
+     * 3. o pulso interno da NYVOLT começa.
+     */
+    energyController.start({
+      timestamp,
+
+      onCollect,
+    });
+  }
+
+  /* =======================================================
      RENDERIZAÇÃO
      ======================================================= */
 
@@ -179,59 +235,55 @@ export function createSnakeRenderer({ layer }) {
 
     const timestamp = performance.now();
 
-    eatingController.update(timestamp);
+    /*
+     * Primeiro verificamos se a NYVOLT já alcançou
+     * visualmente o ponto de contato com o orbe.
+     */
+    updatePendingEnergyCollection(progress, timestamp);
 
-    digestionRenderer.update(timestamp);
+    /*
+     * Depois atualizamos o pulso de energia.
+     *
+     * Caso ele tenha acabado de iniciar acima,
+     * elapsed começa corretamente em zero.
+     */
+    energyController.update(timestamp);
+
+    const energyState = energyController.getState();
 
     snakeCanvas.clear();
 
     const visualGrowth = morphology.updateGrowth(snake.length);
 
-    /*
-     * A cobra inteira é uma única forma.
-     *
-     * O próprio bodyRenderer é responsável
-     * pelo início arredondado e pela cauda.
-     */
     bodyRenderer.render({
       context,
 
       color: bodyColor,
 
+      highlightColor,
+
       visualGrowth,
 
       pathGeometry,
-    });
 
-    /*
-     * Protuberância do rato passando
-     * por dentro do corpo.
-     */
-    digestionRenderer.render({
-      context,
-
-      pathGeometry,
-
-      color: bodyColor,
+      energyProgress: energyState.energyProgress,
     });
   }
 
   /* =======================================================
-     ALIMENTAÇÃO
+     ABSORÇÃO DE ENERGIA
      ======================================================= */
 
-  function triggerEatingSequence({ onMouseEnter } = {}) {
-    eatingController.start({
-      timestamp: performance.now(),
-
-      onMouseEnter: () => {
-        digestionRenderer.start(performance.now());
-
-        if (typeof onMouseEnter === "function") {
-          onMouseEnter();
-        }
-      },
-    });
+  function triggerEnergyAbsorption({ onCollect } = {}) {
+    /*
+     * Não coletamos o orbe imediatamente.
+     *
+     * A colisão já foi confirmada pela lógica do jogo,
+     * mas esperamos a interpolação alcançar o ponto
+     * em que a NYVOLT encosta visualmente nele.
+     */
+    pendingEnergyCollection =
+      typeof onCollect === "function" ? onCollect : null;
   }
 
   /* =======================================================
@@ -240,7 +292,9 @@ export function createSnakeRenderer({ layer }) {
 
   return {
     create,
+
     render,
-    triggerEatingSequence,
+
+    triggerEnergyAbsorption,
   };
 }

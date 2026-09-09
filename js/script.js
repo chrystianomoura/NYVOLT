@@ -1,5 +1,5 @@
 /* =========================================================
-   JARAKA — SCRIPT
+   NYVOLT — SCRIPT
    Orquestração principal do jogo
    ========================================================= */
 
@@ -7,7 +7,7 @@ import { createSoundController } from "./audio/sound.js";
 
 import { createInputController } from "./input.js";
 
-import { createMouseController } from "./mouse.js";
+import { createOrbController } from "./orb.js";
 
 import { createSnakeRenderer } from "./snake.js";
 
@@ -65,9 +65,7 @@ const gameBoard = document.querySelector(".game-board");
 
 const snakeLayer = gameBoard?.querySelector(".snake-layer");
 
-const mouseElement = gameBoard?.querySelector(".mouse-food");
-
-const mouseActor = mouseElement?.querySelector(".mouse-actor");
+const orbElement = gameBoard?.querySelector(".energy-orb");
 
 /* =========================================================
    DOM — HUD
@@ -98,7 +96,7 @@ const gameOverReplayButton = document.querySelector("#game-over-replay");
 const gameOverExitButton = document.querySelector("#game-over-exit");
 
 /* =========================================================
-   ESTADO INICIAL DA COBRA
+   ESTADO INICIAL DA NYVOLT
    ========================================================= */
 
 const initialSnake = [
@@ -116,10 +114,10 @@ const initialDirection = {
 };
 
 /* =========================================================
-   POSIÇÃO DO RATO
+   POSIÇÃO DO ORBE
    ========================================================= */
 
-const mousePosition = {
+const orbPosition = {
   x: 0,
   y: 0,
 };
@@ -148,15 +146,17 @@ const soundController = createSoundController();
 
 const snakeRenderer = createSnakeRenderer({
   board: gameBoard,
+
   layer: snakeLayer,
 });
 
-const mouseController = createMouseController({
-  element: mouseElement,
+const orbController = createOrbController({
+  element: orbElement,
 });
 
 const scoreController = createScoreController({
   scoreElement,
+
   highScoreElement,
 });
 
@@ -173,17 +173,15 @@ let gameOverController = null;
 let startScreenController = null;
 
 /* =========================================================
-   FOOD
+   ORBE DE ENERGIA
    ========================================================= */
 
 const foodController = createFoodController({
-  element: mouseElement,
+  element: orbElement,
 
-  actor: mouseActor,
+  position: orbPosition,
 
-  position: mousePosition,
-
-  mouseController,
+  orbController,
 
   getSnake: () => gameState.getSnake(),
 
@@ -197,6 +195,18 @@ const foodController = createFoodController({
 function wait(milliseconds) {
   return new Promise((resolve) => {
     window.setTimeout(resolve, milliseconds);
+  });
+}
+
+/* =========================================================
+   PRÓXIMO FRAME
+   ========================================================= */
+
+function waitForNextFrame() {
+  return new Promise((resolve) => {
+    window.requestAnimationFrame(() => {
+      resolve();
+    });
   });
 }
 
@@ -254,16 +264,16 @@ async function runCountdown() {
 }
 
 /* =========================================================
-   ALIMENTAÇÃO
+   ABSORÇÃO DE ENERGIA
    ========================================================= */
 
-function startEatingSequence() {
+function startEnergyAbsorption() {
   if (gameState.isGameOver()) {
     return;
   }
 
-  snakeRenderer.triggerEatingSequence({
-    onMouseEnter: () => {
+  snakeRenderer.triggerEnergyAbsorption({
+    onCollect: () => {
       if (gameState.isGameOver()) {
         return;
       }
@@ -312,13 +322,11 @@ function moveSnake() {
    * A direção que estava aguardando na fila
    * passa a ser a direção lógica deste tick.
    */
-
   const direction = directionController.applyQueuedDirection();
 
   /*
    * Agora uma nova entrada pode ser aceita.
    */
-
   inputController?.unlock();
 
   const head = snake[0];
@@ -356,14 +364,17 @@ function moveSnake() {
    * NO WALL:
    * posição normalizada no lado oposto.
    */
-
   const newHead = movement.position;
 
   /* =======================================================
-     ALIMENTAÇÃO
+     COLETA DO ORBE
      ======================================================= */
 
-  const willEatMouse = isSamePosition(newHead, foodController.getPosition());
+  const willCollectOrb = isSamePosition(
+    newHead,
+
+    foodController.getPosition(),
+  );
 
   /* =======================================================
      COLISÃO COM O PRÓPRIO CORPO
@@ -377,7 +388,7 @@ function moveSnake() {
 
       pendingGrowth: growthController.getPendingGrowth(),
 
-      willGrow: willEatMouse,
+      willGrow: willCollectOrb,
     })
   ) {
     gameOverController.end("self");
@@ -389,7 +400,7 @@ function moveSnake() {
      FILA DE CRESCIMENTO + SCORE
      ======================================================= */
 
-  if (willEatMouse) {
+  if (willCollectOrb) {
     growthController.queue();
 
     scoreController.increment();
@@ -413,28 +424,36 @@ function moveSnake() {
      CRESCIMENTO LÓGICO
      ======================================================= */
 
-  const didGrow = growthController.applyPendingGrowth(snake, tailBeforeMove);
+  const didGrow = growthController.applyPendingGrowth(
+    snake,
+
+    tailBeforeMove,
+  );
 
   /* =======================================================
      CRESCIMENTO VISUAL
      ======================================================= */
 
-  const renderSnake = growthController.updateVisualGrowth(snake, didGrow);
+  const renderSnake = growthController.updateVisualGrowth(
+    snake,
+
+    didGrow,
+  );
 
   gameState.setRenderSnake(renderSnake);
 
   /* =======================================================
-     RATO — EXPRESSÃO
+     ORBE — ATUALIZAÇÃO VISUAL
      ======================================================= */
 
-  mouseController.update(newHead, mousePosition);
+  orbController.update();
 
   /* =======================================================
-     ALIMENTAÇÃO — VISUAL
+     ABSORÇÃO — VISUAL
      ======================================================= */
 
-  if (willEatMouse) {
-    startEatingSequence();
+  if (willCollectOrb) {
+    startEnergyAbsorption();
   }
 }
 
@@ -463,13 +482,15 @@ function prepareRound(mode) {
 
   snakeRenderer.render(
     gameState.getRenderSnake(),
+
     gameState.getPreviousRenderSnake(),
+
     0,
   );
 
   foodController.spawnInitial();
 
-  mouseController.update(gameState.getSnake()[0], mousePosition);
+  orbController.update();
 
   scoreController.startRound(mode);
 
@@ -502,6 +523,18 @@ async function startGameplay(mode) {
 
   gameStage.classList.remove("game-stage--waiting");
 
+  /*
+   * A arena estava no estado de espera quando
+   * o orbe foi criado inicialmente.
+   *
+   * Esperamos o navegador recalcular o layout
+   * visível da arena e então redesenhamos o Canvas
+   * com suas dimensões definitivas.
+   */
+  await waitForNextFrame();
+
+  orbController.update();
+
   await runCountdown();
 
   gameStage.classList.remove("game-stage--countdown");
@@ -531,6 +564,12 @@ async function startGameplay(mode) {
 
         progress,
       );
+
+      /*
+       * O orbe utiliza o timestamp interno do próprio
+       * renderer para produzir pulsação e rotação.
+       */
+      orbController.update();
     },
 
     isGameOver: () => gameState.isGameOver(),
@@ -587,6 +626,7 @@ function exitToStartScreen() {
 
 gameOverController = createGameOverController({
   gameBoard,
+
   gameStage,
 
   overlay: gameOverElement,
