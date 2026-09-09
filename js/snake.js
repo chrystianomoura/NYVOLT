@@ -4,8 +4,6 @@
 
 import { GRID_COLUMNS, GRID_ROWS } from "./game/config.js";
 
-import { getVisualHead } from "./snake/head-position.js";
-
 import {
   buildBodyPoints,
   simplifyOrthogonalPoints,
@@ -15,8 +13,6 @@ import {
   buildRoundedPathGeometry,
   getRoundedPathFrontFrame,
 } from "./snake/rounded-path.js";
-
-import { sampleRoundedPathAtLength } from "./snake/path-sampling.js";
 
 import { createSnakeCanvas } from "./snake/canvas.js";
 
@@ -28,33 +24,7 @@ import { createSnakeBodyRenderer } from "./snake/body.js";
 
 import { createSnakeHeadCanvasRenderer } from "./snake/head-canvas.js";
 
-import {
-  createHead,
-  createHeadClone,
-  syncHeadClone,
-  showHeadClone,
-  hideHeadClone,
-  setHeadPosition,
-  updateHeadShape,
-  updateHeadDirection as updateHeadDirectionModule,
-  triggerHeadTurn as triggerHeadTurnModule,
-} from "./snake/head.js";
-
-import { resolveWrapTransition } from "./snake/wrap.js";
-
-import {
-  triggerBite as triggerBiteModule,
-  triggerBiteClose as triggerBiteCloseModule,
-  triggerChew as triggerChewModule,
-  finishChew as finishChewModule,
-  finishBite as finishBiteModule,
-  triggerSwallowSegment as triggerSwallowSegmentModule,
-  triggerSwallowWave as triggerSwallowWaveModule,
-  triggerGrowthArrival as triggerGrowthArrivalModule,
-  triggerEatingSequence as triggerEatingSequenceModule,
-} from "./snake/eating.js";
-
-const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
+import { createSnakeEatingController } from "./snake/eating.js";
 
 /* =========================================================
    EVENTOS
@@ -79,11 +49,14 @@ export function createSnakeRenderer({ layer }) {
 
   const snakeCanvas = createSnakeCanvas({
     layer,
+
     columns: GRID_COLUMNS,
+
     rows: GRID_ROWS,
   });
 
-  let bodyContext = null;
+  let context = null;
+
   let bodyColor = "";
 
   /* =======================================================
@@ -92,6 +65,7 @@ export function createSnakeRenderer({ layer }) {
 
   const morphology = createSnakeMorphology({
     bodyWidth: BODY_WIDTH,
+
     initialSnakeLength: 0,
   });
 
@@ -101,6 +75,7 @@ export function createSnakeRenderer({ layer }) {
 
   const geometry = createSnakeGeometry({
     bodyWidth: BODY_WIDTH,
+
     morphology,
   });
 
@@ -110,82 +85,27 @@ export function createSnakeRenderer({ layer }) {
 
   const bodyRenderer = createSnakeBodyRenderer({
     geometry,
+
     morphology,
+
     columns: GRID_COLUMNS,
+
     rows: GRID_ROWS,
+
     bodyWidth: BODY_WIDTH,
   });
 
   /* =======================================================
-     CABEÇA CANVAS
+     CABEÇA
      ======================================================= */
 
-  const headCanvasRenderer = createSnakeHeadCanvasRenderer();
+  const headRenderer = createSnakeHeadCanvasRenderer();
 
   /* =======================================================
-     SVG
+     ALIMENTAÇÃO
      ======================================================= */
 
-  let bodySvg = null;
-  let bodyPath = null;
-
-  let latestBodyLength = 0;
-  let latestPathGeometry = null;
-
-  /* =======================================================
-     CABEÇA DOM
-     ======================================================= */
-
-  let headElement = null;
-  let headCore = null;
-
-  let headCloneElement = null;
-  let headCloneCore = null;
-
-  /* =======================================================
-     ESTADO
-     ======================================================= */
-
-  let latestSnakeLength = 0;
-
-  /* =======================================================
-     SVG
-     ======================================================= */
-
-  function createBodyPath(className) {
-    const path = document.createElementNS(SVG_NAMESPACE, "path");
-
-    path.classList.add(className);
-
-    path.setAttribute("fill", "none");
-
-    return path;
-  }
-
-  function createBodySvg() {
-    const svg = document.createElementNS(SVG_NAMESPACE, "svg");
-
-    svg.classList.add("snake-body-svg");
-
-    svg.setAttribute("viewBox", `0 0 ${GRID_COLUMNS} ${GRID_ROWS}`);
-
-    svg.setAttribute("preserveAspectRatio", "none");
-
-    svg.setAttribute("aria-hidden", "true");
-
-    const geometryPath = createBodyPath("snake-body-path");
-
-    geometryPath.style.opacity = "0";
-
-    geometryPath.style.pointerEvents = "none";
-
-    svg.appendChild(geometryPath);
-
-    layer.appendChild(svg);
-
-    bodySvg = svg;
-    bodyPath = geometryPath;
-  }
+  const eatingController = createSnakeEatingController();
 
   /* =======================================================
      TEMA
@@ -207,10 +127,10 @@ export function createSnakeRenderer({ layer }) {
      CRIAÇÃO
      ======================================================= */
 
-  function create(snake, direction) {
+  function create(snake) {
     snakeCanvas.destroy();
 
-    bodyContext = null;
+    context = null;
 
     window.removeEventListener(THEME_CHANGE_EVENT, handleThemeChange);
 
@@ -218,66 +138,22 @@ export function createSnakeRenderer({ layer }) {
 
     layer.replaceChildren();
 
-    latestSnakeLength = snake.length;
-
-    latestBodyLength = 0;
-
-    latestPathGeometry = null;
-
     morphology.reset(snake.length);
 
     geometry.reset();
 
+    eatingController.reset();
+
     snakeCanvas.create();
 
-    bodyContext = snakeCanvas.getContext();
+    context = snakeCanvas.getContext();
 
     resolveBodyColor();
-
-    createBodySvg();
-
-    const head = createHead(layer);
-
-    headElement = head.element;
-
-    headCore = head.core;
-
-    const headClone = createHeadClone(layer);
-
-    headCloneElement = headClone.element;
-
-    headCloneCore = headClone.core;
-
-    hideHeadClone(headCloneElement);
-
-    headElement.style.visibility = "hidden";
-
-    headCloneElement.style.visibility = "hidden";
-
-    updateSegmentShapes(snake, direction);
-
-    updateHeadDirection(direction);
   }
 
   /* =======================================================
-     FORMATO
+     GEOMETRIA
      ======================================================= */
-
-  function updateSegmentShapes(snake, direction) {
-    latestSnakeLength = snake.length;
-
-    updateHeadShape(headCore, direction);
-
-    updateHeadShape(headCloneCore, direction);
-  }
-
-  /* =======================================================
-     UTILITÁRIOS
-     ======================================================= */
-
-  function clamp(value, minimum, maximum) {
-    return Math.max(minimum, Math.min(value, maximum));
-  }
 
   function buildGeometry(snake, previousSnake, progress) {
     const rawPoints = buildBodyPoints(snake, previousSnake, progress);
@@ -288,60 +164,18 @@ export function createSnakeRenderer({ layer }) {
   }
 
   /* =======================================================
-     CABEÇA DOM
+     CABEÇA
      ======================================================= */
 
-  function renderHead(snake, previousSnake, progress) {
-    const visualHead = getVisualHead(snake, previousSnake, progress);
-
-    const currentHead = snake[0];
-
-    const previousHead = previousSnake?.[0] ?? currentHead;
-
-    const transition = resolveWrapTransition(previousHead, currentHead);
-
-    if (transition.crossed) {
-      setHeadPosition(headElement, visualHead);
-
-      const clonePosition = {
-        x: visualHead.x + transition.oppositeOffset.x,
-
-        y: visualHead.y + transition.oppositeOffset.y,
-      };
-
-      syncHeadClone(headElement, headCore, headCloneElement, headCloneCore);
-
-      setHeadPosition(headCloneElement, clonePosition);
-
-      showHeadClone(headCloneElement);
-
-      return;
-    }
-
-    const projectedHead = {
-      x: ((visualHead.x % GRID_COLUMNS) + GRID_COLUMNS) % GRID_COLUMNS,
-
-      y: ((visualHead.y % GRID_ROWS) + GRID_ROWS) % GRID_ROWS,
-    };
-
-    setHeadPosition(headElement, projectedHead);
-
-    hideHeadClone(headCloneElement);
-  }
-
-  /* =======================================================
-     CABEÇA CANVAS
-     ======================================================= */
-
-  function renderCanvasHead(pathGeometry) {
+  function renderHead(pathGeometry, eatingState) {
     const frontFrame = getRoundedPathFrontFrame(pathGeometry);
 
     if (!frontFrame) {
       return;
     }
 
-    headCanvasRenderer.render({
-      context: bodyContext,
+    headRenderer.render({
+      context,
 
       position: frontFrame.position,
 
@@ -350,6 +184,8 @@ export function createSnakeRenderer({ layer }) {
       headTangent: frontFrame.headTangent,
 
       color: bodyColor,
+
+      eatingState,
     });
   }
 
@@ -358,165 +194,60 @@ export function createSnakeRenderer({ layer }) {
      ======================================================= */
 
   function render(snake, previousSnake, progress) {
-    if (!headElement || !bodyPath) {
+    if (!context) {
       return;
     }
 
-    latestSnakeLength = snake.length;
-
-    renderHead(snake, previousSnake, progress);
-
     const pathGeometry = buildGeometry(snake, previousSnake, progress);
 
-    latestPathGeometry = pathGeometry;
+    const timestamp = performance.now();
 
-    latestBodyLength = pathGeometry?.totalLength ?? 0;
+    eatingController.update(timestamp);
 
-    bodyPath.setAttribute("d", pathGeometry.pathData);
+    const eatingState = eatingController.getState();
 
     snakeCanvas.clear();
 
     const visualGrowth = morphology.updateGrowth(snake.length);
 
     bodyRenderer.render({
-      context: bodyContext,
+      context,
 
       color: bodyColor,
 
       visualGrowth,
 
       pathGeometry,
+
+      eatingState,
     });
 
-    renderCanvasHead(pathGeometry);
-  }
-
-  /* =======================================================
-     CACHE
-     ======================================================= */
-
-  function getCachedBodyLength() {
-    return latestBodyLength;
-  }
-
-  function getCachedBodyPointAtRatio(ratio) {
-    if (!latestPathGeometry) {
-      return null;
-    }
-
-    const totalLength = latestPathGeometry.totalLength;
-
-    if (!Number.isFinite(totalLength) || totalLength <= 0) {
-      return null;
-    }
-
-    const safeRatio = clamp(ratio, 0, 1);
-
-    const distance = totalLength * safeRatio;
-
-    const point = sampleRoundedPathAtLength(latestPathGeometry, distance);
-
-    if (!point || !Number.isFinite(point.x) || !Number.isFinite(point.y)) {
-      return null;
-    }
-
-    return {
-      x: point.x,
-
-      y: point.y,
-    };
-  }
-
-  /* =======================================================
-     DIREÇÃO
-     ======================================================= */
-
-  function updateHeadDirection(direction) {
-    updateHeadDirectionModule(headElement, direction);
-
-    updateHeadDirectionModule(headCloneElement, direction);
-  }
-
-  function triggerHeadTurn(turnSide) {
-    triggerHeadTurnModule(headElement, headCore, turnSide);
-
-    triggerHeadTurnModule(headCloneElement, headCloneCore, turnSide);
+    renderHead(pathGeometry, eatingState);
   }
 
   /* =======================================================
      ALIMENTAÇÃO
      ======================================================= */
 
-  function triggerBite() {
-    triggerBiteModule(headElement);
-  }
-
-  function triggerBiteClose() {
-    triggerBiteCloseModule(headElement);
-  }
-
-  function triggerChew() {
-    triggerChewModule(headElement);
-  }
-
-  function finishChew() {
-    finishChewModule(headElement);
-  }
-
-  function finishBite() {
-    finishBiteModule(headElement);
-  }
-
-  function triggerSwallowSegment(index) {
-    triggerSwallowSegmentModule({
-      bodySvg,
-      bodyPath,
-      latestSnakeLength,
-      index,
-
-      getBodyLength: getCachedBodyLength,
-
-      getBodyPointAtRatio: getCachedBodyPointAtRatio,
-    });
-  }
-
-  function triggerSwallowWave({ segmentDelay = 92, onComplete } = {}) {
-    triggerSwallowWaveModule({
-      bodySvg,
-      bodyPath,
-      latestSnakeLength,
-      segmentDelay,
-
-      getBodyLength: getCachedBodyLength,
-
-      getBodyPointAtRatio: getCachedBodyPointAtRatio,
-
-      onComplete,
-    });
-  }
-
-  function triggerGrowthArrival() {
-    triggerGrowthArrivalModule({
-      bodySvg,
-      bodyPath,
-    });
-  }
-
   function triggerEatingSequence({ onMouseEnter, onSwallowComplete } = {}) {
-    triggerEatingSequenceModule({
-      headElement,
-      bodySvg,
-      bodyPath,
-      latestSnakeLength,
-
-      getBodyLength: getCachedBodyLength,
-
-      getBodyPointAtRatio: getCachedBodyPointAtRatio,
+    eatingController.start({
+      timestamp: performance.now(),
 
       onMouseEnter,
+
       onSwallowComplete,
     });
   }
+
+  /* =======================================================
+     COMPATIBILIDADE TEMPORÁRIA
+     ======================================================= */
+
+  function updateSegmentShapes() {}
+
+  function updateHeadDirection() {}
+
+  function triggerHeadTurn() {}
 
   /* =======================================================
      API
@@ -525,17 +256,11 @@ export function createSnakeRenderer({ layer }) {
   return {
     create,
     render,
+
     updateSegmentShapes,
     updateHeadDirection,
     triggerHeadTurn,
-    triggerBite,
-    triggerBiteClose,
-    triggerChew,
-    finishChew,
-    finishBite,
-    triggerSwallowSegment,
-    triggerSwallowWave,
-    triggerGrowthArrival,
+
     triggerEatingSequence,
   };
 }

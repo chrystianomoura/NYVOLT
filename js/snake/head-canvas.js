@@ -7,7 +7,6 @@
    ========================================================= */
 
 const HEAD_LENGTH = 0.88;
-const HEAD_HALF_LENGTH = HEAD_LENGTH * 0.5;
 
 const NECK_WIDTH = 0.92;
 const CHEEK_WIDTH = 0.92;
@@ -23,6 +22,12 @@ const EYE_RADIUS = 0.082;
 const PUPIL_RADIUS = 0.036;
 const PUPIL_FORWARD = 0.024;
 
+const MOUTH_FORWARD = 0.84;
+const MOUTH_HALF_WIDTH = 0.19;
+const MOUTH_CLOSED_DEPTH = 0.018;
+const MOUTH_OPEN_DEPTH = 0.18;
+const MOUTH_INSET = 0.025;
+
 const SPINE_SAMPLE_COUNT = 12;
 
 const MIN_VECTOR_LENGTH = 0.000001;
@@ -33,6 +38,10 @@ const MIN_VECTOR_LENGTH = 0.000001;
 
 function clamp(value, minimum, maximum) {
   return Math.min(Math.max(value, minimum), maximum);
+}
+
+function lerp(start, end, progress) {
+  return start + (end - start) * progress;
 }
 
 function smoothstep(start, end, value) {
@@ -81,6 +90,7 @@ function interpolateDirection(from, to, progress) {
 
   return {
     x: Math.cos(angle),
+
     y: Math.sin(angle),
   };
 }
@@ -128,6 +138,7 @@ function integrateSpine(
   const stepDistance = distance / steps;
 
   let x = position.x;
+
   let y = position.y;
 
   for (let index = 0; index < steps; index += 1) {
@@ -358,11 +369,110 @@ function drawEyes(context, position, bodyForward, headForward) {
 }
 
 /* =========================================================
+   ALIMENTAÇÃO
+   ========================================================= */
+
+function getMouthOpenProgress(eatingState) {
+  if (!eatingState?.active) {
+    return 0;
+  }
+
+  const opening = smoothstep(0, 1, eatingState.biteOpenProgress ?? 0);
+
+  const closing = smoothstep(0, 1, eatingState.biteCloseProgress ?? 0);
+
+  return clamp(opening * (1 - closing), 0, 1);
+}
+
+/* =========================================================
+   BOCA
+   ========================================================= */
+
+function drawMouth(context, position, bodyForward, headForward, eatingState) {
+  const section = getSection(
+    position,
+    bodyForward,
+    headForward,
+    MOUTH_FORWARD,
+    FRONT_WIDTH,
+  );
+
+  const openProgress = getMouthOpenProgress(eatingState);
+
+  const depth = lerp(MOUTH_CLOSED_DEPTH, MOUTH_OPEN_DEPTH, openProgress);
+
+  const halfWidth = MOUTH_HALF_WIDTH * (0.82 + openProgress * 0.18);
+
+  const center = {
+    x: section.center.x + section.direction.x * MOUTH_INSET,
+
+    y: section.center.y + section.direction.y * MOUTH_INSET,
+  };
+
+  const left = {
+    x: center.x + section.normal.x * halfWidth,
+
+    y: center.y + section.normal.y * halfWidth,
+  };
+
+  const right = {
+    x: center.x - section.normal.x * halfWidth,
+
+    y: center.y - section.normal.y * halfWidth,
+  };
+
+  const inner = {
+    x: center.x - section.direction.x * depth,
+
+    y: center.y - section.direction.y * depth,
+  };
+
+  context.beginPath();
+
+  context.moveTo(left.x, left.y);
+
+  context.quadraticCurveTo(inner.x, inner.y, right.x, right.y);
+
+  if (openProgress > MIN_VECTOR_LENGTH) {
+    const outer = {
+      x: center.x + section.direction.x * depth * 0.22,
+
+      y: center.y + section.direction.y * depth * 0.22,
+    };
+
+    context.quadraticCurveTo(outer.x, outer.y, left.x, left.y);
+
+    context.closePath();
+
+    context.fillStyle = "#101414";
+
+    context.fill();
+
+    return;
+  }
+
+  context.strokeStyle = "#101414";
+
+  context.lineWidth = 0.035;
+
+  context.lineCap = "round";
+
+  context.stroke();
+}
+
+/* =========================================================
    RENDERIZAÇÃO
    ========================================================= */
 
 export function createSnakeHeadCanvasRenderer() {
-  function render({ context, position, bodyTangent, headTangent, color }) {
+  function render({
+    context,
+    position,
+    bodyTangent,
+    headTangent,
+    color,
+    eatingState,
+  }) {
     if (!context || !position || !bodyTangent || !headTangent) {
       return;
     }
@@ -378,6 +488,8 @@ export function createSnakeHeadCanvasRenderer() {
     drawHeadShape(context, position, bodyForward, headForward, color);
 
     drawEyes(context, position, bodyForward, headForward);
+
+    drawMouth(context, position, bodyForward, headForward, eatingState);
   }
 
   return {

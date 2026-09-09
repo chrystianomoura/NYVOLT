@@ -1,35 +1,23 @@
 /* =========================================================
    JARAKA — SNAKE EATING
-   Mordida, mastigação, deglutição e crescimento
-
-   Responsabilidades:
-   - estados visuais de alimentação da cabeça;
-   - mordida;
-   - mastigação;
-   - onda de deglutição;
-   - adaptação da deglutição à cauda afinada;
-   - sequência completa de alimentação.
-
-   Este módulo não controla:
-   - movimentação;
-   - geometria do path;
-   - criação da cabeça;
-   - lógica do jogo.
    ========================================================= */
-
-const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 
 /* =========================================================
-   DEGLUTIÇÃO — CONFIGURAÇÃO
+   TIMELINE
    ========================================================= */
 
-const TAIL_START_RATIO = 0.62;
+const BITE_OPEN_END = 115;
 
-const SWALLOW_END_RATIO = 0.94;
+const BITE_CLOSE_START = 115;
+const BITE_CLOSE_END = 300;
 
-const BODY_SWALLOW_RADIUS = 0.55;
+const CHEW_START = 320;
+const CHEW_END = 660;
 
-const TAIL_SWALLOW_RADIUS = 0.16;
+const SWALLOW_START = 360;
+const SWALLOW_END = 1120;
+
+const SEQUENCE_END = SWALLOW_END;
 
 /* =========================================================
    UTILITÁRIOS
@@ -39,419 +27,171 @@ function clamp(value, minimum, maximum) {
   return Math.max(minimum, Math.min(value, maximum));
 }
 
-function lerp(start, end, progress) {
-  return start + (end - start) * progress;
-}
+function getWindowProgress(elapsed, start, end) {
+  if (end <= start) {
+    return elapsed >= end ? 1 : 0;
+  }
 
-function smoothstep(progress) {
-  const safeProgress = clamp(progress, 0, 1);
-
-  return safeProgress * safeProgress * (3 - 2 * safeProgress);
+  return clamp((elapsed - start) / (end - start), 0, 1);
 }
 
 /* =========================================================
-   ESTADOS DA CABEÇA
+   FACTORY
    ========================================================= */
 
-function clearEatingFaceStates(headElement) {
-  if (!headElement) {
-    return;
-  }
+export function createSnakeEatingController() {
+  let active = false;
 
-  headElement.classList.remove("is-biting", "is-bite-closing", "is-chewing");
-}
+  let startedAt = 0;
 
-export function triggerBite(headElement) {
-  if (!headElement) {
-    return;
-  }
+  let elapsed = 0;
 
-  clearEatingFaceStates(headElement);
+  let onMouseEnter = null;
 
-  void headElement.offsetWidth;
+  let onSwallowComplete = null;
 
-  headElement.classList.add("is-biting");
-}
+  /* =======================================================
+     CALLBACKS
+     ======================================================= */
 
-export function triggerBiteClose(headElement) {
-  if (!headElement) {
-    return;
-  }
-
-  headElement.classList.add("is-bite-closing");
-}
-
-export function triggerChew(headElement) {
-  if (!headElement) {
-    return;
-  }
-
-  headElement.classList.remove("is-biting", "is-bite-closing", "is-chewing");
-
-  void headElement.offsetWidth;
-
-  headElement.classList.add("is-chewing");
-}
-
-export function finishChew(headElement) {
-  if (!headElement) {
-    return;
-  }
-
-  headElement.classList.remove("is-chewing");
-}
-
-export function finishBite(headElement) {
-  clearEatingFaceStates(headElement);
-}
-
-/* =========================================================
-   GEOMETRIA DO BODY PATH
-   ========================================================= */
-
-function getBodyLength({ bodyPath, getCachedLength }) {
-  if (!bodyPath) {
-    return 0;
-  }
-
-  /*
-   * Caminho preferencial:
-   * comprimento calculado pelo próprio renderer.
-   */
-
-  const cachedLength = getCachedLength?.();
-
-  if (Number.isFinite(cachedLength) && cachedLength > 0) {
-    return cachedLength;
-  }
-
-  /*
-   * Fallback.
-   *
-   * Só deve ser usado caso o renderer ainda não tenha
-   * produzido um comprimento geométrico válido.
-   */
-
-  try {
-    const measuredLength = bodyPath.getTotalLength();
-
-    if (Number.isFinite(measuredLength) && measuredLength > 0) {
-      return measuredLength;
+  function triggerMouseEnter() {
+    if (!onMouseEnter) {
+      return;
     }
-  } catch {
-    return 0;
+
+    const callback = onMouseEnter;
+
+    onMouseEnter = null;
+
+    callback();
   }
 
-  return 0;
-}
+  function triggerSwallowComplete() {
+    if (!onSwallowComplete) {
+      return;
+    }
 
-/* =========================================================
-   PONTO DA DEGLUTIÇÃO
-   ========================================================= */
+    const callback = onSwallowComplete;
 
-function getBodyPointAtRatio({
-  bodyPath,
-  ratio,
-  totalLength,
-  getCachedPointAtRatio,
-}) {
-  const safeRatio = clamp(ratio, 0, 1);
+    onSwallowComplete = null;
 
-  /*
-   * Caminho preferencial.
-   *
-   * O renderer já possui a geometria matemática do corpo.
-   * Se um sampler for fornecido, reutilizamos essa geometria
-   * diretamente sem consultar o SVG.
-   */
+    callback();
+  }
 
-  if (typeof getCachedPointAtRatio === "function") {
-    const cachedPoint = getCachedPointAtRatio(safeRatio);
+  /* =======================================================
+     START
+     ======================================================= */
 
-    if (
-      cachedPoint &&
-      Number.isFinite(cachedPoint.x) &&
-      Number.isFinite(cachedPoint.y)
-    ) {
+  function start({
+    timestamp = performance.now(),
+    onMouseEnter: mouseEnterCallback,
+    onSwallowComplete: swallowCompleteCallback,
+  } = {}) {
+    active = true;
+
+    startedAt = timestamp;
+
+    elapsed = 0;
+
+    onMouseEnter =
+      typeof mouseEnterCallback === "function" ? mouseEnterCallback : null;
+
+    onSwallowComplete =
+      typeof swallowCompleteCallback === "function"
+        ? swallowCompleteCallback
+        : null;
+  }
+
+  /* =======================================================
+     UPDATE
+     ======================================================= */
+
+  function update(timestamp = performance.now()) {
+    if (!active) {
+      return;
+    }
+
+    elapsed = Math.max(0, timestamp - startedAt);
+
+    if (elapsed >= BITE_OPEN_END) {
+      triggerMouseEnter();
+    }
+
+    if (elapsed >= SWALLOW_END) {
+      triggerSwallowComplete();
+    }
+
+    if (elapsed >= SEQUENCE_END) {
+      active = false;
+
+      elapsed = SEQUENCE_END;
+    }
+  }
+
+  /* =======================================================
+     RESET
+     ======================================================= */
+
+  function reset() {
+    active = false;
+
+    startedAt = 0;
+
+    elapsed = 0;
+
+    onMouseEnter = null;
+
+    onSwallowComplete = null;
+  }
+
+  /* =======================================================
+     ESTADO
+     ======================================================= */
+
+  function getState() {
+    if (!active) {
       return {
-        x: cachedPoint.x,
-        y: cachedPoint.y,
+        active: false,
+
+        sequenceProgress: 0,
+
+        biteOpenProgress: 0,
+
+        biteCloseProgress: 0,
+
+        chewProgress: 0,
+
+        swallowProgress: 0,
       };
     }
-  }
-
-  /*
-   * Fallback SVG.
-   *
-   * Mantido apenas para segurança e compatibilidade.
-   * Depois que snake.js fornecer o sampler matemático,
-   * este caminho deixa de ser usado durante o gameplay.
-   */
-
-  if (!bodyPath || !Number.isFinite(totalLength) || totalLength <= 0) {
-    return null;
-  }
-
-  try {
-    const point = bodyPath.getPointAtLength(totalLength * safeRatio);
 
     return {
-      x: point.x,
-      y: point.y,
+      active: true,
+
+      sequenceProgress: getWindowProgress(elapsed, 0, SEQUENCE_END),
+
+      biteOpenProgress: getWindowProgress(elapsed, 0, BITE_OPEN_END),
+
+      biteCloseProgress: getWindowProgress(
+        elapsed,
+        BITE_CLOSE_START,
+        BITE_CLOSE_END,
+      ),
+
+      chewProgress: getWindowProgress(elapsed, CHEW_START, CHEW_END),
+
+      swallowProgress: getWindowProgress(elapsed, SWALLOW_START, SWALLOW_END),
     };
-  } catch {
-    return null;
-  }
-}
-
-/* =========================================================
-   RAIO DA DEGLUTIÇÃO
-   ========================================================= */
-
-function getSwallowRadius(ratio) {
-  if (ratio <= TAIL_START_RATIO) {
-    return BODY_SWALLOW_RADIUS;
   }
 
-  const tailProgress =
-    (ratio - TAIL_START_RATIO) / (SWALLOW_END_RATIO - TAIL_START_RATIO);
+  /* =======================================================
+     API
+     ======================================================= */
 
-  const easedProgress = smoothstep(tailProgress);
-
-  return lerp(BODY_SWALLOW_RADIUS, TAIL_SWALLOW_RADIUS, easedProgress);
-}
-
-/* =========================================================
-   OPACIDADE FINAL
-   ========================================================= */
-
-function getSwallowOpacity(progress) {
-  const fadeStart = 0.82;
-
-  if (progress <= fadeStart) {
-    return 1;
-  }
-
-  const fadeProgress = (progress - fadeStart) / (1 - fadeStart);
-
-  return lerp(1, 0, smoothstep(fadeProgress));
-}
-
-/* =========================================================
-   VOLUME SVG
-   ========================================================= */
-
-function createSwallowBulge(bodySvg) {
-  if (!bodySvg) {
-    return null;
-  }
-
-  const bulge = document.createElementNS(SVG_NAMESPACE, "circle");
-
-  bulge.classList.add("snake-swallow-bulge");
-
-  bulge.setAttribute("r", BODY_SWALLOW_RADIUS);
-
-  bodySvg.appendChild(bulge);
-
-  return bulge;
-}
-
-/* =========================================================
-   PULSO POR SEGMENTO
-   ========================================================= */
-
-export function triggerSwallowSegment({
-  bodySvg,
-  bodyPath,
-  latestSnakeLength,
-  index,
-  getBodyLength: getCachedLength,
-  getBodyPointAtRatio: getCachedPointAtRatio,
-}) {
-  const bodyCount = Math.max(1, latestSnakeLength - 1);
-
-  const rawRatio = clamp(index / bodyCount, 0, 1);
-
-  const ratio = Math.min(rawRatio, SWALLOW_END_RATIO);
-
-  const totalLength = getBodyLength({
-    bodyPath,
-    getCachedLength,
-  });
-
-  const point = getBodyPointAtRatio({
-    bodyPath,
-    ratio,
-    totalLength,
-    getCachedPointAtRatio,
-  });
-
-  if (!point) {
-    return;
-  }
-
-  const bulge = createSwallowBulge(bodySvg);
-
-  if (!bulge) {
-    return;
-  }
-
-  bulge.setAttribute("cx", point.x);
-
-  bulge.setAttribute("cy", point.y);
-
-  bulge.setAttribute("r", getSwallowRadius(ratio));
-
-  bulge.classList.add("is-pulsing");
-
-  window.setTimeout(() => {
-    bulge.remove();
-  }, 260);
-}
-
-/* =========================================================
-   ONDA CONTÍNUA
-   ========================================================= */
-
-export function triggerSwallowWave({
-  bodySvg,
-  bodyPath,
-  latestSnakeLength,
-  segmentDelay = 92,
-  getBodyLength: getCachedLength,
-  getBodyPointAtRatio: getCachedPointAtRatio,
-  onComplete,
-} = {}) {
-  const bodyCount = Math.max(1, latestSnakeLength - 1);
-
-  const duration = Math.max(420, bodyCount * segmentDelay + 245);
-
-  const bulge = createSwallowBulge(bodySvg);
-
-  if (!bulge) {
-    onComplete?.();
-
-    return;
-  }
-
-  const startedAt = performance.now();
-
-  function animate(timestamp) {
-    if (!bulge.isConnected) {
-      return;
-    }
-
-    const progress = clamp((timestamp - startedAt) / duration, 0, 1);
-
-    const ratio = 0.04 + progress * (SWALLOW_END_RATIO - 0.04);
-
-    /*
-     * O comprimento e o ponto podem vir diretamente
-     * da geometria matemática mantida pelo renderer.
-     *
-     * Se o renderer fornecer ambos, nenhum cálculo
-     * geométrico do SVG é necessário neste frame.
-     */
-
-    const totalLength = getBodyLength({
-      bodyPath,
-      getCachedLength,
-    });
-
-    const point = getBodyPointAtRatio({
-      bodyPath,
-      ratio,
-      totalLength,
-      getCachedPointAtRatio,
-    });
-
-    if (point) {
-      bulge.setAttribute("cx", point.x);
-
-      bulge.setAttribute("cy", point.y);
-
-      bulge.setAttribute("r", getSwallowRadius(ratio));
-
-      bulge.style.opacity = getSwallowOpacity(progress);
-    }
-
-    if (progress < 1) {
-      requestAnimationFrame(animate);
-
-      return;
-    }
-
-    bulge.remove();
-
-    requestAnimationFrame(() => {
-      onComplete?.();
-    });
-  }
-
-  requestAnimationFrame(animate);
-}
-
-/* =========================================================
-   CRESCIMENTO NA CAUDA
-   ========================================================= */
-
-export function triggerGrowthArrival() {
-  /*
-   * Sem elemento visual adicional.
-   *
-   * A própria atualização do corpo
-   * representa o crescimento.
-   */
-}
-
-/* =========================================================
-   SEQUÊNCIA COMPLETA
-   ========================================================= */
-
-export function triggerEatingSequence({
-  headElement,
-  bodySvg,
-  bodyPath,
-  latestSnakeLength,
-  getBodyLength: getCachedLength,
-  getBodyPointAtRatio: getCachedPointAtRatio,
-  onMouseEnter,
-  onSwallowComplete,
-} = {}) {
-  triggerBite(headElement);
-
-  window.setTimeout(() => {
-    onMouseEnter?.();
-  }, 115);
-
-  window.setTimeout(() => {
-    triggerBiteClose(headElement);
-  }, 300);
-
-  window.setTimeout(() => {
-    triggerSwallowWave({
-      bodySvg,
-      bodyPath,
-      latestSnakeLength,
-
-      segmentDelay: 92,
-
-      getBodyLength: getCachedLength,
-
-      getBodyPointAtRatio: getCachedPointAtRatio,
-
-      onComplete: () => {
-        onSwallowComplete?.();
-      },
-    });
-  }, 360);
-
-  window.setTimeout(() => {
-    triggerChew(headElement);
-  }, 440);
-
-  window.setTimeout(() => {
-    finishChew(headElement);
-  }, 1340);
+  return {
+    start,
+    update,
+    reset,
+    getState,
+  };
 }
