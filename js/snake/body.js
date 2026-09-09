@@ -123,8 +123,6 @@ export function createSnakeBodyRenderer({
 
     const directionYs = geometry.getDirectionYs();
 
-    const segmentCount = centerPointCount - 1;
-
     const normal = getBoundaryNormal(index);
 
     if (!normal) {
@@ -171,6 +169,7 @@ export function createSnakeBodyRenderer({
 
     return {
       x: normal.x * radius * miterScale,
+
       y: normal.y * radius * miterScale,
     };
   }
@@ -199,11 +198,13 @@ export function createSnakeBodyRenderer({
 
       leftPoints[index] = {
         x: center.x + offset.x,
+
         y: center.y + offset.y,
       };
 
       rightPoints[index] = {
         x: center.x - offset.x,
+
         y: center.y - offset.y,
       };
     }
@@ -373,18 +374,22 @@ export function createSnakeBodyRenderer({
 
     const horizontalRange = getWrapTileRange({
       minimum: bounds.minimumX,
+
       maximum: bounds.maximumX,
+
       viewportSize: columns,
     });
 
     const verticalRange = getWrapTileRange({
       minimum: bounds.minimumY,
+
       maximum: bounds.maximumY,
+
       viewportSize: rows,
     });
 
     for (
-      let tileY = horizontalRange.minimumTile;
+      let tileY = verticalRange.minimumTile;
       tileY <= verticalRange.maximumTile;
       tileY += 1
     ) {

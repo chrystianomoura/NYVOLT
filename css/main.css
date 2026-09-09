@@ -1,19 +1,23 @@
 /* =========================================================
+
    JARAKA
+
    CSS Entry Point
+
    ========================================================= */
 
 @import url("./base.css");
+
 @import url("./themes.css");
 
 @import url("./start-screen.css");
 
 @import url("./board.css");
+
 @import url("./countdown.css");
+
 @import url("./game-over.css");
 
 @import url("./snake/body.css");
-@import url("./snake/head.css");
-@import url("./snake/eating.css");
 
 @import url("./mouse.css");

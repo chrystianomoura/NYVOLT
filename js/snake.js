@@ -167,7 +167,7 @@ export function createSnakeRenderer({ layer }) {
      CABEÇA
      ======================================================= */
 
-  function renderHead(pathGeometry, eatingState) {
+  function renderHead(pathGeometry) {
     const frontFrame = getRoundedPathFrontFrame(pathGeometry);
 
     if (!frontFrame) {
@@ -184,8 +184,6 @@ export function createSnakeRenderer({ layer }) {
       headTangent: frontFrame.headTangent,
 
       color: bodyColor,
-
-      eatingState,
     });
   }
 
@@ -200,11 +198,7 @@ export function createSnakeRenderer({ layer }) {
 
     const pathGeometry = buildGeometry(snake, previousSnake, progress);
 
-    const timestamp = performance.now();
-
-    eatingController.update(timestamp);
-
-    const eatingState = eatingController.getState();
+    eatingController.update(performance.now());
 
     snakeCanvas.clear();
 
@@ -218,36 +212,22 @@ export function createSnakeRenderer({ layer }) {
       visualGrowth,
 
       pathGeometry,
-
-      eatingState,
     });
 
-    renderHead(pathGeometry, eatingState);
+    renderHead(pathGeometry);
   }
 
   /* =======================================================
      ALIMENTAÇÃO
      ======================================================= */
 
-  function triggerEatingSequence({ onMouseEnter, onSwallowComplete } = {}) {
+  function triggerEatingSequence({ onMouseEnter } = {}) {
     eatingController.start({
       timestamp: performance.now(),
 
       onMouseEnter,
-
-      onSwallowComplete,
     });
   }
-
-  /* =======================================================
-     COMPATIBILIDADE TEMPORÁRIA
-     ======================================================= */
-
-  function updateSegmentShapes() {}
-
-  function updateHeadDirection() {}
-
-  function triggerHeadTurn() {}
 
   /* =======================================================
      API
@@ -256,11 +236,6 @@ export function createSnakeRenderer({ layer }) {
   return {
     create,
     render,
-
-    updateSegmentShapes,
-    updateHeadDirection,
-    triggerHeadTurn,
-
     triggerEatingSequence,
   };
 }

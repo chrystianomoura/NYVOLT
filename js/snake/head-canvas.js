@@ -6,27 +6,26 @@
    CONSTANTES
    ========================================================= */
 
-const HEAD_LENGTH = 0.88;
+const HEAD_LENGTH = 0.94;
 
 const NECK_WIDTH = 0.92;
-const CHEEK_WIDTH = 0.92;
-const FRONT_WIDTH = 0.78;
 
-const CHEEK_POSITION = 0.42;
+const BACK_WIDTH = 1.02;
+const CHEEK_WIDTH = 1.12;
+const FRONT_WIDTH = 0.72;
+
+const BACK_POSITION = 0.22;
+const CHEEK_POSITION = 0.48;
 const FRONT_POSITION = 0.82;
 
-const EYE_FORWARD = 0.56;
-const EYE_SIDE = 0.25;
+const EYE_FORWARD = 0.55;
+const EYE_SIDE = 0.33;
 
-const EYE_RADIUS = 0.082;
-const PUPIL_RADIUS = 0.036;
-const PUPIL_FORWARD = 0.024;
+const EYE_RADIUS = 0.064;
 
-const MOUTH_FORWARD = 0.84;
-const MOUTH_HALF_WIDTH = 0.19;
-const MOUTH_CLOSED_DEPTH = 0.018;
-const MOUTH_OPEN_DEPTH = 0.18;
-const MOUTH_INSET = 0.025;
+const PUPIL_WIDTH = 0.026;
+const PUPIL_HEIGHT = 0.052;
+const PUPIL_FORWARD = 0.018;
 
 const SPINE_SAMPLE_COUNT = 12;
 
@@ -38,10 +37,6 @@ const MIN_VECTOR_LENGTH = 0.000001;
 
 function clamp(value, minimum, maximum) {
   return Math.min(Math.max(value, minimum), maximum);
-}
-
-function lerp(start, end, progress) {
-  return start + (end - start) * progress;
 }
 
 function smoothstep(start, end, value) {
@@ -67,6 +62,7 @@ function normalizeVector(x, y) {
 
   return {
     x: x / length,
+
     y: y / length,
   };
 }
@@ -104,6 +100,7 @@ function getDirectionAt(bodyForward, headForward, progress) {
 function getNormal(direction) {
   return {
     x: -direction.y,
+
     y: direction.x,
   };
 }
@@ -122,6 +119,7 @@ function integrateSpine(
   if (Math.abs(endProgress - startProgress) <= MIN_VECTOR_LENGTH) {
     return {
       x: position.x,
+
       y: position.y,
     };
   }
@@ -179,7 +177,9 @@ function getSection(position, bodyForward, headForward, progress, width) {
 
   return {
     center,
+
     direction,
+
     normal,
 
     left: {
@@ -203,6 +203,14 @@ function getSection(position, bodyForward, headForward, progress, width) {
 function drawHeadShape(context, position, bodyForward, headForward, color) {
   const neck = getSection(position, bodyForward, headForward, 0, NECK_WIDTH);
 
+  const back = getSection(
+    position,
+    bodyForward,
+    headForward,
+    BACK_POSITION,
+    BACK_WIDTH,
+  );
+
   const cheek = getSection(
     position,
     bodyForward,
@@ -225,23 +233,48 @@ function drawHeadShape(context, position, bodyForward, headForward, color) {
 
   context.moveTo(neck.left.x, neck.left.y);
 
+  /* =======================================================
+     LADO ESQUERDO — PESCOÇO → TRASEIRA
+     ======================================================= */
+
   context.bezierCurveTo(
-    neck.left.x + neck.direction.x * HEAD_LENGTH * 0.16,
+    neck.left.x + neck.direction.x * HEAD_LENGTH * 0.08,
 
-    neck.left.y + neck.direction.y * HEAD_LENGTH * 0.16,
+    neck.left.y + neck.direction.y * HEAD_LENGTH * 0.08,
 
-    cheek.left.x - cheek.direction.x * HEAD_LENGTH * 0.12,
+    back.left.x - back.direction.x * HEAD_LENGTH * 0.08,
 
-    cheek.left.y - cheek.direction.y * HEAD_LENGTH * 0.12,
+    back.left.y - back.direction.y * HEAD_LENGTH * 0.08,
+
+    back.left.x,
+    back.left.y,
+  );
+
+  /* =======================================================
+     TRASEIRA → BOCHECHA
+     ======================================================= */
+
+  context.bezierCurveTo(
+    back.left.x + back.direction.x * HEAD_LENGTH * 0.08,
+
+    back.left.y + back.direction.y * HEAD_LENGTH * 0.08,
+
+    cheek.left.x - cheek.direction.x * HEAD_LENGTH * 0.06,
+
+    cheek.left.y - cheek.direction.y * HEAD_LENGTH * 0.06,
 
     cheek.left.x,
     cheek.left.y,
   );
 
-  context.bezierCurveTo(
-    cheek.left.x + cheek.direction.x * HEAD_LENGTH * 0.18,
+  /* =======================================================
+     BOCHECHA → FRENTE
+     ======================================================= */
 
-    cheek.left.y + cheek.direction.y * HEAD_LENGTH * 0.18,
+  context.bezierCurveTo(
+    cheek.left.x + cheek.direction.x * HEAD_LENGTH * 0.15,
+
+    cheek.left.y + cheek.direction.y * HEAD_LENGTH * 0.15,
 
     front.left.x - front.direction.x * HEAD_LENGTH * 0.08,
 
@@ -251,61 +284,94 @@ function drawHeadShape(context, position, bodyForward, headForward, color) {
     front.left.y,
   );
 
-  context.bezierCurveTo(
-    front.left.x + front.direction.x * HEAD_LENGTH * 0.08,
+  /* =======================================================
+     FRENTE → FOCINHO
+     ======================================================= */
 
-    front.left.y + front.direction.y * HEAD_LENGTH * 0.08,
+  context.bezierCurveTo(
+    front.left.x + front.direction.x * HEAD_LENGTH * 0.07,
+
+    front.left.y + front.direction.y * HEAD_LENGTH * 0.07,
 
     nose.x +
-      front.normal.x * FRONT_WIDTH * 0.18 -
-      headForward.x * HEAD_LENGTH * 0.04,
+      front.normal.x * FRONT_WIDTH * 0.16 -
+      headForward.x * HEAD_LENGTH * 0.025,
 
     nose.y +
-      front.normal.y * FRONT_WIDTH * 0.18 -
-      headForward.y * HEAD_LENGTH * 0.04,
+      front.normal.y * FRONT_WIDTH * 0.16 -
+      headForward.y * HEAD_LENGTH * 0.025,
 
     nose.x,
     nose.y,
   );
 
+  /* =======================================================
+     FOCINHO → FRENTE DIREITA
+     ======================================================= */
+
   context.bezierCurveTo(
     nose.x -
-      front.normal.x * FRONT_WIDTH * 0.18 -
-      headForward.x * HEAD_LENGTH * 0.04,
+      front.normal.x * FRONT_WIDTH * 0.16 -
+      headForward.x * HEAD_LENGTH * 0.025,
 
     nose.y -
-      front.normal.y * FRONT_WIDTH * 0.18 -
-      headForward.y * HEAD_LENGTH * 0.04,
+      front.normal.y * FRONT_WIDTH * 0.16 -
+      headForward.y * HEAD_LENGTH * 0.025,
 
-    front.right.x + front.direction.x * HEAD_LENGTH * 0.08,
+    front.right.x + front.direction.x * HEAD_LENGTH * 0.07,
 
-    front.right.y + front.direction.y * HEAD_LENGTH * 0.08,
+    front.right.y + front.direction.y * HEAD_LENGTH * 0.07,
 
     front.right.x,
     front.right.y,
   );
+
+  /* =======================================================
+     FRENTE → BOCHECHA DIREITA
+     ======================================================= */
 
   context.bezierCurveTo(
     front.right.x - front.direction.x * HEAD_LENGTH * 0.08,
 
     front.right.y - front.direction.y * HEAD_LENGTH * 0.08,
 
-    cheek.right.x + cheek.direction.x * HEAD_LENGTH * 0.18,
+    cheek.right.x + cheek.direction.x * HEAD_LENGTH * 0.15,
 
-    cheek.right.y + cheek.direction.y * HEAD_LENGTH * 0.18,
+    cheek.right.y + cheek.direction.y * HEAD_LENGTH * 0.15,
 
     cheek.right.x,
     cheek.right.y,
   );
 
+  /* =======================================================
+     BOCHECHA → TRASEIRA DIREITA
+     ======================================================= */
+
   context.bezierCurveTo(
-    cheek.right.x - cheek.direction.x * HEAD_LENGTH * 0.12,
+    cheek.right.x - cheek.direction.x * HEAD_LENGTH * 0.06,
 
-    cheek.right.y - cheek.direction.y * HEAD_LENGTH * 0.12,
+    cheek.right.y - cheek.direction.y * HEAD_LENGTH * 0.06,
 
-    neck.right.x + neck.direction.x * HEAD_LENGTH * 0.16,
+    back.right.x + back.direction.x * HEAD_LENGTH * 0.08,
 
-    neck.right.y + neck.direction.y * HEAD_LENGTH * 0.16,
+    back.right.y + back.direction.y * HEAD_LENGTH * 0.08,
+
+    back.right.x,
+    back.right.y,
+  );
+
+  /* =======================================================
+     TRASEIRA → PESCOÇO
+     ======================================================= */
+
+  context.bezierCurveTo(
+    back.right.x - back.direction.x * HEAD_LENGTH * 0.08,
+
+    back.right.y - back.direction.y * HEAD_LENGTH * 0.08,
+
+    neck.right.x + neck.direction.x * HEAD_LENGTH * 0.08,
+
+    neck.right.y + neck.direction.y * HEAD_LENGTH * 0.08,
 
     neck.right.x,
     neck.right.y,
@@ -339,13 +405,21 @@ function drawEye(context, position, bodyForward, headForward, side) {
     y: section.center.y + section.normal.y * CHEEK_WIDTH * EYE_SIDE * side,
   };
 
+  /* =======================================================
+     GLOBO
+     ======================================================= */
+
   context.beginPath();
 
   context.arc(eye.x, eye.y, EYE_RADIUS, 0, Math.PI * 2);
 
-  context.fillStyle = "#f4f4ef";
+  context.fillStyle = "#ddd8bd";
 
   context.fill();
+
+  /* =======================================================
+     PUPILA VERTICAL
+     ======================================================= */
 
   const pupil = {
     x: eye.x + section.direction.x * PUPIL_FORWARD,
@@ -353,13 +427,21 @@ function drawEye(context, position, bodyForward, headForward, side) {
     y: eye.y + section.direction.y * PUPIL_FORWARD,
   };
 
+  context.save();
+
+  context.translate(pupil.x, pupil.y);
+
+  context.rotate(Math.atan2(section.direction.y, section.direction.x));
+
   context.beginPath();
 
-  context.arc(pupil.x, pupil.y, PUPIL_RADIUS, 0, Math.PI * 2);
+  context.ellipse(0, 0, PUPIL_HEIGHT, PUPIL_WIDTH, 0, 0, Math.PI * 2);
 
   context.fillStyle = "#101414";
 
   context.fill();
+
+  context.restore();
 }
 
 function drawEyes(context, position, bodyForward, headForward) {
@@ -369,110 +451,11 @@ function drawEyes(context, position, bodyForward, headForward) {
 }
 
 /* =========================================================
-   ALIMENTAÇÃO
-   ========================================================= */
-
-function getMouthOpenProgress(eatingState) {
-  if (!eatingState?.active) {
-    return 0;
-  }
-
-  const opening = smoothstep(0, 1, eatingState.biteOpenProgress ?? 0);
-
-  const closing = smoothstep(0, 1, eatingState.biteCloseProgress ?? 0);
-
-  return clamp(opening * (1 - closing), 0, 1);
-}
-
-/* =========================================================
-   BOCA
-   ========================================================= */
-
-function drawMouth(context, position, bodyForward, headForward, eatingState) {
-  const section = getSection(
-    position,
-    bodyForward,
-    headForward,
-    MOUTH_FORWARD,
-    FRONT_WIDTH,
-  );
-
-  const openProgress = getMouthOpenProgress(eatingState);
-
-  const depth = lerp(MOUTH_CLOSED_DEPTH, MOUTH_OPEN_DEPTH, openProgress);
-
-  const halfWidth = MOUTH_HALF_WIDTH * (0.82 + openProgress * 0.18);
-
-  const center = {
-    x: section.center.x + section.direction.x * MOUTH_INSET,
-
-    y: section.center.y + section.direction.y * MOUTH_INSET,
-  };
-
-  const left = {
-    x: center.x + section.normal.x * halfWidth,
-
-    y: center.y + section.normal.y * halfWidth,
-  };
-
-  const right = {
-    x: center.x - section.normal.x * halfWidth,
-
-    y: center.y - section.normal.y * halfWidth,
-  };
-
-  const inner = {
-    x: center.x - section.direction.x * depth,
-
-    y: center.y - section.direction.y * depth,
-  };
-
-  context.beginPath();
-
-  context.moveTo(left.x, left.y);
-
-  context.quadraticCurveTo(inner.x, inner.y, right.x, right.y);
-
-  if (openProgress > MIN_VECTOR_LENGTH) {
-    const outer = {
-      x: center.x + section.direction.x * depth * 0.22,
-
-      y: center.y + section.direction.y * depth * 0.22,
-    };
-
-    context.quadraticCurveTo(outer.x, outer.y, left.x, left.y);
-
-    context.closePath();
-
-    context.fillStyle = "#101414";
-
-    context.fill();
-
-    return;
-  }
-
-  context.strokeStyle = "#101414";
-
-  context.lineWidth = 0.035;
-
-  context.lineCap = "round";
-
-  context.stroke();
-}
-
-/* =========================================================
    RENDERIZAÇÃO
    ========================================================= */
 
 export function createSnakeHeadCanvasRenderer() {
-  function render({
-    context,
-    position,
-    bodyTangent,
-    headTangent,
-    color,
-    eatingState,
-  }) {
+  function render({ context, position, bodyTangent, headTangent, color }) {
     if (!context || !position || !bodyTangent || !headTangent) {
       return;
     }
@@ -488,8 +471,6 @@ export function createSnakeHeadCanvasRenderer() {
     drawHeadShape(context, position, bodyForward, headForward, color);
 
     drawEyes(context, position, bodyForward, headForward);
-
-    drawMouth(context, position, bodyForward, headForward, eatingState);
   }
 
   return {

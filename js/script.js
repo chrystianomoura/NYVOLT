@@ -270,19 +270,6 @@ function startEatingSequence() {
 
       foodController.consumeVisually();
     },
-
-    onSwallowComplete: () => {
-      if (gameState.isGameOver()) {
-        return;
-      }
-
-      /*
-       * O crescimento lógico já foi aplicado
-       * pelo growthController.
-       *
-       * Aqui termina apenas a sequência visual.
-       */
-    },
   });
 }
 
@@ -305,20 +292,8 @@ function handleDirectionChange(candidate) {
     return;
   }
 
-  /*
-   * A direção lógica só será aplicada
-   * no próximo tick.
-   *
-   * A cabeça pode antecipar visualmente
-   * a intenção aceita.
-   */
-
-  snakeRenderer.updateHeadDirection(candidate);
-
   if (result.turnSide) {
     soundController.play("turn");
-
-    snakeRenderer.triggerHeadTurn(result.turnSide);
   }
 }
 
@@ -449,14 +424,6 @@ function moveSnake() {
   gameState.setRenderSnake(renderSnake);
 
   /* =======================================================
-     RENDERER
-     ======================================================= */
-
-  snakeRenderer.updateSegmentShapes(snake, direction);
-
-  snakeRenderer.updateHeadDirection(direction);
-
-  /* =======================================================
      RATO — EXPRESSÃO
      ======================================================= */
 
@@ -492,9 +459,7 @@ function prepareRound(mode) {
 
   foodController.resetVisualState();
 
-  const direction = directionController.getDirection();
-
-  snakeRenderer.create(gameState.getSnake(), direction);
+  snakeRenderer.create(gameState.getSnake());
 
   snakeRenderer.render(
     gameState.getRenderSnake(),
@@ -561,7 +526,9 @@ async function startGameplay(mode) {
     onRender: (progress) => {
       snakeRenderer.render(
         gameState.getRenderSnake(),
+
         gameState.getPreviousRenderSnake(),
+
         progress,
       );
     },

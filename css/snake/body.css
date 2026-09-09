@@ -4,8 +4,6 @@
 
    Responsabilidades:
    - camada Canvas do corpo;
-   - camada SVG auxiliar;
-   - organização das camadas da cobra;
    - integração visual com o sistema de temas.
 
    A cor efetiva do corpo desenhado no Canvas é resolvida
@@ -29,51 +27,4 @@
   pointer-events: none;
 
   z-index: 1;
-}
-
-/* =========================================================
-   SVG DO CORPO
-   ========================================================= */
-
-.snake-body-svg {
-  position: absolute;
-
-  inset: 0;
-
-  width: 100%;
-  height: 100%;
-
-  overflow: visible;
-
-  pointer-events: none;
-
-  z-index: 2;
-}
-
-/* =========================================================
-   PATH CENTRAL
-   ========================================================= */
-
-.snake-body-path {
-  fill: none;
-
-  stroke: var(--snake-main);
-
-  stroke-linecap: round;
-  stroke-linejoin: round;
-
-  vector-effect: non-scaling-stroke;
-
-  filter: drop-shadow(0 0 3px var(--snake-glow-soft))
-    drop-shadow(0 0 7px var(--snake-glow-subtle));
-
-  pointer-events: none;
-}
-
-/* =========================================================
-   CAMADA DA CABEÇA
-   ========================================================= */
-
-.snake-head {
-  z-index: 10;
 }
