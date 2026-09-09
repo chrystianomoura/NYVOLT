@@ -25,7 +25,7 @@ const EYE_RADIUS_SIDE = 0.145;
 const EYE_WHITE = "#f7ffff";
 
 /* =========================================================
-   PUPILAS — NORMAL
+   PUPILAS
    ========================================================= */
 
 const PUPIL_RADIUS_FORWARD = 0.115;
@@ -34,16 +34,6 @@ const PUPIL_RADIUS_SIDE = 0.105;
 const PUPIL_FORWARD = 0.035;
 
 const PUPIL_COLOR = "#101414";
-
-/* =========================================================
-   PUPILAS — ATAQUE
-   ========================================================= */
-
-const ATTACK_PUPIL_RADIUS_FORWARD = 0.145;
-
-const ATTACK_PUPIL_RADIUS_SIDE = 0.022;
-
-const ATTACK_PUPIL_FORWARD_SHIFT = 0.018;
 
 /* =========================================================
    BRILHO
@@ -55,8 +45,6 @@ const HIGHLIGHT_FORWARD = 0.035;
 const HIGHLIGHT_SIDE = -0.026;
 
 const HIGHLIGHT_COLOR = "#ffffff";
-
-const ATTACK_HIGHLIGHT_SCALE = 0.12;
 
 /* =========================================================
    BOCA NORMAL
@@ -111,9 +99,9 @@ const FANG_COLOR = "#f8fff8";
    PRESAS SUPERIORES
    ========================================================= */
 
-const UPPER_FANG_LENGTH = 0.305;
+const UPPER_FANG_LENGTH = 0.235;
 
-const UPPER_FANG_HALF_WIDTH = 0.078;
+const UPPER_FANG_HALF_WIDTH = 0.062;
 
 const UPPER_FANG_SIDE = 0.27;
 
@@ -239,12 +227,10 @@ function drawHead(context, color) {
    OLHO
    ========================================================= */
 
-function drawEye(context, side, attackProgress) {
+function drawEye(context, side) {
   const eyeX = EYE_FORWARD;
 
   const eyeY = EYE_SIDE * side;
-
-  const progress = smoothstep(attackProgress);
 
   /* =======================================================
      BRANCO DO OLHO
@@ -270,14 +256,6 @@ function drawEye(context, side, attackProgress) {
      CLIP INTERNO DO OLHO
      ======================================================= */
 
-  /*
-   * Tudo que pertence ao interior do olho
-   * fica fisicamente limitado ao branco.
-   *
-   * Isso elimina qualquer vazamento da
-   * pupila durante a transformação.
-   */
-
   context.save();
 
   context.beginPath();
@@ -298,29 +276,17 @@ function drawEye(context, side, attackProgress) {
      PUPILA
      ======================================================= */
 
-  const pupilX = eyeX + PUPIL_FORWARD + ATTACK_PUPIL_FORWARD_SHIFT * progress;
+  const pupilX = eyeX + PUPIL_FORWARD;
 
   const pupilY = eyeY;
-
-  const pupilRadiusForward = lerp(
-    PUPIL_RADIUS_FORWARD,
-    ATTACK_PUPIL_RADIUS_FORWARD,
-    progress,
-  );
-
-  const pupilRadiusSide = lerp(
-    PUPIL_RADIUS_SIDE,
-    ATTACK_PUPIL_RADIUS_SIDE,
-    progress,
-  );
 
   context.beginPath();
 
   context.ellipse(
     pupilX,
     pupilY,
-    pupilRadiusForward,
-    pupilRadiusSide,
+    PUPIL_RADIUS_FORWARD,
+    PUPIL_RADIUS_SIDE,
     0,
     0,
     Math.PI * 2,
@@ -334,26 +300,19 @@ function drawEye(context, side, attackProgress) {
      BRILHO
      ======================================================= */
 
-  const highlightScale = lerp(1, ATTACK_HIGHLIGHT_SCALE, progress);
+  context.beginPath();
 
-  if (highlightScale > MIN_VECTOR_LENGTH) {
-    context.beginPath();
+  context.arc(
+    pupilX + HIGHLIGHT_FORWARD,
+    pupilY + HIGHLIGHT_SIDE * side,
+    HIGHLIGHT_RADIUS,
+    0,
+    Math.PI * 2,
+  );
 
-    context.arc(
-      pupilX + HIGHLIGHT_FORWARD,
+  context.fillStyle = HIGHLIGHT_COLOR;
 
-      pupilY + HIGHLIGHT_SIDE * side,
-
-      HIGHLIGHT_RADIUS * highlightScale,
-
-      0,
-      Math.PI * 2,
-    );
-
-    context.fillStyle = HIGHLIGHT_COLOR;
-
-    context.fill();
-  }
+  context.fill();
 
   context.restore();
 }
@@ -362,10 +321,10 @@ function drawEye(context, side, attackProgress) {
    OLHOS
    ========================================================= */
 
-function drawEyes(context, attackProgress) {
-  drawEye(context, 1, attackProgress);
+function drawEyes(context) {
+  drawEye(context, 1);
 
-  drawEye(context, -1, attackProgress);
+  drawEye(context, -1);
 }
 
 /* =========================================================
@@ -696,13 +655,6 @@ function drawMouth(context, biteProgress) {
    ========================================================= */
 
 function drawFace(context, eatingState) {
-  const attackProgress = clamp(
-    eatingState?.attackProgress ?? 0,
-
-    0,
-    1,
-  );
-
   const biteProgress = clamp(
     eatingState?.biteProgress ?? 0,
 
@@ -710,7 +662,7 @@ function drawFace(context, eatingState) {
     1,
   );
 
-  drawEyes(context, attackProgress);
+  drawEyes(context);
 
   drawCheeks(context);
 

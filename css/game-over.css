@@ -110,6 +110,8 @@
 
 /* =========================================================
    CONTEÚDO
+
+   Título e ações compartilham a mesma largura estrutural.
    ========================================================= */
 
 .game-over__content {
@@ -131,10 +133,19 @@
 
 /* =========================================================
    TÍTULO — GAME / OVER
+
+   O título possui exatamente a mesma largura máxima
+   do bloco de ações.
+
+   Cada linha é dividida em quatro colunas iguais.
+   Cada letra ocupa uma coluna própria.
+
+   Dessa forma a composição não depende de letter-spacing
+   para definir sua largura.
    ========================================================= */
 
 .game-over__title {
-  width: 100%;
+  width: min(100%, 290px);
 
   min-width: 0;
   max-width: 100%;
@@ -143,17 +154,15 @@
 
   display: grid;
 
-  justify-items: center;
+  row-gap: clamp(0px, calc(var(--board-width) * 0.006), 3px);
 
-  row-gap: clamp(2px, calc(var(--board-width) * 0.012), 6px);
-
-  font-size: clamp(52px, calc(var(--board-width) * 0.2), 86px);
+  font-size: clamp(66px, calc(var(--board-width) * 0.245), 104px);
 
   font-weight: 800;
 
-  line-height: 0.82;
+  line-height: 0.8;
 
-  letter-spacing: 0.035em;
+  letter-spacing: 0;
 
   color: var(--theme-color);
 
@@ -167,10 +176,37 @@
   animation: jaraka-game-over-title 560ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-.game-over__title span {
-  display: block;
+/* =========================================================
+   LINHAS DO TÍTULO
+
+   GAME e OVER utilizam quatro colunas idênticas.
+
+   A primeira e a última coluna definem as extremidades
+   estruturais da composição.
+   ========================================================= */
+
+.game-over__title-line {
+  width: 100%;
+
+  min-width: 0;
+
+  display: grid;
+
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+
+  align-items: center;
+
+  justify-items: center;
 
   white-space: nowrap;
+}
+
+.game-over__title-line > span {
+  display: block;
+
+  min-width: 0;
+
+  line-height: inherit;
 }
 
 /* =========================================================
@@ -377,8 +413,13 @@
     width: 86%;
   }
 
+  .game-over__title,
   .game-over__actions {
     width: 100%;
+  }
+
+  .game-over__title {
+    font-size: clamp(58px, calc(var(--board-width) * 0.245), 88px);
   }
 
   .game-over__button {
@@ -400,7 +441,7 @@
   }
 
   .game-over__title {
-    font-size: clamp(44px, calc(var(--board-width) * 0.175), 72px);
+    font-size: clamp(54px, calc(var(--board-width) * 0.22), 88px);
   }
 
   .game-over__button {

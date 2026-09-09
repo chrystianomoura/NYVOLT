@@ -5,7 +5,6 @@
    Responsabilidades:
    - manter a posição lógica do rato;
    - encontrar células livres;
-   - respeitar margem visual segura;
    - escolher uma nova posição;
    - atualizar a posição visual;
    - controlar o primeiro spawn;
@@ -18,16 +17,6 @@
 import { GRID_COLUMNS, GRID_ROWS } from "./config.js";
 
 import { isSamePosition } from "./collision.js";
-
-/* =========================================================
-   ÁREA SEGURA DO RATO
-   ========================================================= */
-
-const SAFE_MARGIN_LEFT = 1;
-const SAFE_MARGIN_RIGHT = 1;
-
-const SAFE_MARGIN_TOP = 1;
-const SAFE_MARGIN_BOTTOM = 1;
 
 /* =========================================================
    CONTROLLER
@@ -70,27 +59,6 @@ export function createFoodController({
   }
 
   /* =======================================================
-     ÁREA SEGURA
-     ======================================================= */
-
-  function isSafeMouseCell(candidate) {
-    const minimumX = SAFE_MARGIN_LEFT;
-
-    const maximumX = GRID_COLUMNS - 1 - SAFE_MARGIN_RIGHT;
-
-    const minimumY = SAFE_MARGIN_TOP;
-
-    const maximumY = GRID_ROWS - 1 - SAFE_MARGIN_BOTTOM;
-
-    return (
-      candidate.x >= minimumX &&
-      candidate.x <= maximumX &&
-      candidate.y >= minimumY &&
-      candidate.y <= maximumY
-    );
-  }
-
-  /* =======================================================
      CÉLULAS LIVRES
      ======================================================= */
 
@@ -103,10 +71,6 @@ export function createFoodController({
           x,
           y,
         };
-
-        if (!isSafeMouseCell(candidate)) {
-          continue;
-        }
 
         if (isSnakePosition(candidate)) {
           continue;
@@ -196,29 +160,11 @@ export function createFoodController({
   }
 
   /* =======================================================
-     REINICIALIZAÇÃO DA ANIMAÇÃO
-     ======================================================= */
-
-  function restartActorAnimation() {
-    if (!actor) {
-      return;
-    }
-
-    actor.style.animation = "none";
-
-    void actor.offsetWidth;
-
-    actor.style.animation = "";
-  }
-
-  /* =======================================================
      LIMPEZA ENTRE RODADAS
      ======================================================= */
 
   function resetVisualState() {
     resetActor();
-
-    restartActorAnimation();
 
     const snake = getSnake();
 
@@ -263,8 +209,6 @@ export function createFoodController({
     mouseController.update(snake[0]);
 
     resetActor();
-
-    restartActorAnimation();
 
     actor.style.visibility = "visible";
   }
