@@ -9,10 +9,7 @@ import {
   simplifyOrthogonalPoints,
 } from "./snake/centerline.js";
 
-import {
-  buildRoundedPathGeometry,
-  getRoundedPathFrontFrame,
-} from "./snake/rounded-path.js";
+import { buildRoundedPathGeometry } from "./snake/rounded-path.js";
 
 import { createSnakeCanvas } from "./snake/canvas.js";
 
@@ -21,8 +18,6 @@ import { createSnakeMorphology } from "./snake/morphology.js";
 import { createSnakeGeometry } from "./snake/geometry.js";
 
 import { createSnakeBodyRenderer } from "./snake/body.js";
-
-import { createSnakeHeadCanvasRenderer } from "./snake/head-canvas.js";
 
 import { createSnakeEatingController } from "./snake/eating.js";
 
@@ -108,12 +103,6 @@ export function createSnakeRenderer({ layer }) {
   });
 
   /* =======================================================
-     CABEÇA
-     ======================================================= */
-
-  const headRenderer = createSnakeHeadCanvasRenderer();
-
-  /* =======================================================
      ALIMENTAÇÃO
      ======================================================= */
 
@@ -178,34 +167,6 @@ export function createSnakeRenderer({ layer }) {
   }
 
   /* =======================================================
-     CABEÇA
-     ======================================================= */
-
-  function renderHead(pathGeometry) {
-    const frontFrame = getRoundedPathFrontFrame(pathGeometry);
-
-    if (!frontFrame) {
-      return;
-    }
-
-    const eatingState = eatingController.getState();
-
-    headRenderer.render({
-      context,
-
-      position: frontFrame.position,
-
-      bodyTangent: frontFrame.bodyTangent,
-
-      headTangent: frontFrame.headTangent,
-
-      color: bodyColor,
-
-      eatingState,
-    });
-  }
-
-  /* =======================================================
      RENDERIZAÇÃO
      ======================================================= */
 
@@ -227,7 +188,10 @@ export function createSnakeRenderer({ layer }) {
     const visualGrowth = morphology.updateGrowth(snake.length);
 
     /*
-     * 1. Corpo normal.
+     * A cobra inteira é uma única forma.
+     *
+     * O próprio bodyRenderer é responsável
+     * pelo início arredondado e pela cauda.
      */
     bodyRenderer.render({
       context,
@@ -240,11 +204,8 @@ export function createSnakeRenderer({ layer }) {
     });
 
     /*
-     * 2. Protuberância do rato.
-     *
-     * É independente da morfologia
-     * e não altera a largura real
-     * do corpo.
+     * Protuberância do rato passando
+     * por dentro do corpo.
      */
     digestionRenderer.render({
       context,
@@ -253,11 +214,6 @@ export function createSnakeRenderer({ layer }) {
 
       color: bodyColor,
     });
-
-    /*
-     * 3. Cabeça por cima.
-     */
-    renderHead(pathGeometry);
   }
 
   /* =======================================================
@@ -269,19 +225,8 @@ export function createSnakeRenderer({ layer }) {
       timestamp: performance.now(),
 
       onMouseEnter: () => {
-        /*
-         * O rato desapareceu.
-         *
-         * Nesse mesmo instante nasce
-         * a protuberância dentro do corpo.
-         */
         digestionRenderer.start(performance.now());
 
-        /*
-         * Mantém o comportamento original
-         * do jogo responsável pelo rato,
-         * pontuação, crescimento etc.
-         */
         if (typeof onMouseEnter === "function") {
           onMouseEnter();
         }
