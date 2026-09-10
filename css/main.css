@@ -1,9 +1,5 @@
 /* =========================================================
-
-   JARAKA
-
-   CSS Entry Point
-
+   NYVOLT — CSS ENTRY POINT
    ========================================================= */
 
 @import url("./base.css");
@@ -18,6 +14,4 @@
 
 @import url("./game-over.css");
 
-@import url("./snake/body.css");
-
-@import url("./mouse.css");
+@import url("./orb.css");

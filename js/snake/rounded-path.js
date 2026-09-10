@@ -1,10 +1,8 @@
 /* =========================================================
-   JARAKA — ROUNDED PATH
+   NYVOLT — ROUNDED PATH
    ========================================================= */
 
 import { EPSILON } from "../game/config.js";
-
-import { sampleRoundedPathAtLength } from "./path-sampling.js";
 
 /* =========================================================
    CONSTANTES
@@ -13,13 +11,6 @@ import { sampleRoundedPathAtLength } from "./path-sampling.js";
 const CORNER_RADIUS = 0.18;
 const CORNER_SEGMENT_RATIO = 0.32;
 const CORNER_SATURATION_START = 0.72;
-
-const FRONT_FRAME_WINDOW = 0.42;
-const FRONT_FRAME_SAMPLE_COUNT = 24;
-const FRONT_FRAME_DERIVATIVE_DELTA = 0.015;
-const FRONT_FRAME_WEIGHT_FALLOFF = 2.6;
-
-const FRONT_TURN_DISTANCE = 1.40;
 
 const QUADRATIC_LENGTH_STEPS = 8;
 
@@ -41,33 +32,6 @@ function isSamePoint(first, second) {
     Math.abs(first.x - second.x) < EPSILON &&
     Math.abs(first.y - second.y) < EPSILON
   );
-}
-
-function normalizeVector(x, y) {
-  const length = Math.hypot(x, y);
-
-  if (length <= EPSILON) {
-    return null;
-  }
-
-  return {
-    x: x / length,
-    y: y / length,
-  };
-}
-
-function clamp(value, minimum, maximum) {
-  return Math.min(Math.max(value, minimum), maximum);
-}
-
-function smootherstep(start, end, value) {
-  if (Math.abs(end - start) <= EPSILON) {
-    return value < start ? 0 : 1;
-  }
-
-  const progress = clamp((value - start) / (end - start), 0, 1);
-
-  return progress * progress * progress * (progress * (progress * 6 - 15) + 10);
 }
 
 function getManhattanDistance(first, second) {
@@ -96,7 +60,8 @@ function getSaturatedCornerRadius(availableRadius) {
   const progress =
     (availableRadius - saturationStart) / (CORNER_RADIUS - saturationStart);
 
-  const smoothedProgress = smootherstep(0, 1, progress);
+  const smoothedProgress =
+    progress * progress * progress * (progress * (progress * 6 - 15) + 10);
 
   return saturationStart + (CORNER_RADIUS - saturationStart) * smoothedProgress;
 }
@@ -314,269 +279,6 @@ export function buildRoundedPathGeometry(points) {
     pathData,
     segments,
     totalLength,
-  };
-}
-
-/* =========================================================
-   TANGENTE LOCAL
-   ========================================================= */
-
-function getLocalPathTangent(pathGeometry, distance) {
-  const totalLength = pathGeometry?.totalLength ?? 0;
-
-  if (totalLength <= EPSILON) {
-    return null;
-  }
-
-  const beforeDistance = clamp(
-    distance - FRONT_FRAME_DERIVATIVE_DELTA,
-    0,
-    totalLength,
-  );
-
-  const afterDistance = clamp(
-    distance + FRONT_FRAME_DERIVATIVE_DELTA,
-    0,
-    totalLength,
-  );
-
-  if (afterDistance - beforeDistance <= EPSILON) {
-    return null;
-  }
-
-  const beforePoint = sampleRoundedPathAtLength(pathGeometry, beforeDistance);
-
-  const afterPoint = sampleRoundedPathAtLength(pathGeometry, afterDistance);
-
-  if (!beforePoint || !afterPoint) {
-    return null;
-  }
-
-  return normalizeVector(
-    beforePoint.x - afterPoint.x,
-
-    beforePoint.y - afterPoint.y,
-  );
-}
-
-/* =========================================================
-   TANGENTE INTEGRADA
-   ========================================================= */
-
-function getFrontFrameWeight(distance, windowLength) {
-  if (windowLength <= EPSILON) {
-    return 1;
-  }
-
-  const normalizedDistance = clamp(distance / windowLength, 0, 1);
-
-  const falloff = 1 - normalizedDistance;
-
-  return Math.pow(falloff, FRONT_FRAME_WEIGHT_FALLOFF);
-}
-
-function getIntegratedFrontTangent(pathGeometry) {
-  const totalLength = pathGeometry?.totalLength ?? 0;
-
-  const windowLength = Math.min(FRONT_FRAME_WINDOW, totalLength);
-
-  if (windowLength <= EPSILON) {
-    return null;
-  }
-
-  let integratedX = 0;
-  let integratedY = 0;
-  let integratedWeight = 0;
-
-  for (let index = 0; index < FRONT_FRAME_SAMPLE_COUNT; index += 1) {
-    const progress =
-      FRONT_FRAME_SAMPLE_COUNT === 1
-        ? 0
-        : index / (FRONT_FRAME_SAMPLE_COUNT - 1);
-
-    const distance = windowLength * progress;
-
-    const tangent = getLocalPathTangent(pathGeometry, distance);
-
-    if (!tangent) {
-      continue;
-    }
-
-    const weight = getFrontFrameWeight(distance, windowLength);
-
-    if (weight <= EPSILON) {
-      continue;
-    }
-
-    integratedX += tangent.x * weight;
-
-    integratedY += tangent.y * weight;
-
-    integratedWeight += weight;
-  }
-
-  if (integratedWeight <= EPSILON) {
-    return null;
-  }
-
-  return normalizeVector(
-    integratedX / integratedWeight,
-
-    integratedY / integratedWeight,
-  );
-}
-
-/* =========================================================
-   INTERPOLAÇÃO ANGULAR
-   ========================================================= */
-
-function interpolateDirection(from, to, progress) {
-  const fromAngle = Math.atan2(from.y, from.x);
-
-  const toAngle = Math.atan2(to.y, to.x);
-
-  let delta = toAngle - fromAngle;
-
-  while (delta > Math.PI) {
-    delta -= Math.PI * 2;
-  }
-
-  while (delta < -Math.PI) {
-    delta += Math.PI * 2;
-  }
-
-  const angle = fromAngle + delta * progress;
-
-  return {
-    x: Math.cos(angle),
-
-    y: Math.sin(angle),
-  };
-}
-
-/* =========================================================
-   VIRADA
-   ========================================================= */
-
-function getFrontTurnTangent(pathGeometry, position) {
-  const segments = pathGeometry?.segments ?? [];
-
-  const cornerSegment = segments.find(
-    (segment) => segment.type === "quadratic",
-  );
-
-  if (!cornerSegment) {
-    return null;
-  }
-
-  const distanceToCorner = getManhattanDistance(
-    position,
-    cornerSegment.control,
-  );
-
-  if (distanceToCorner > FRONT_TURN_DISTANCE + EPSILON) {
-    return null;
-  }
-
-  const newDirection = normalizeVector(
-    cornerSegment.start.x - cornerSegment.control.x,
-
-    cornerSegment.start.y - cornerSegment.control.y,
-  );
-
-  const previousDirection = normalizeVector(
-    cornerSegment.control.x - cornerSegment.end.x,
-
-    cornerSegment.control.y - cornerSegment.end.y,
-  );
-
-  if (!newDirection || !previousDirection) {
-    return null;
-  }
-
-  const turnProgress = smootherstep(0, FRONT_TURN_DISTANCE, distanceToCorner);
-
-  return interpolateDirection(previousDirection, newDirection, turnProgress);
-}
-
-/* =========================================================
-   FRAME FRONTAL
-   ========================================================= */
-
-function getFallbackFrontFrame(pathGeometry) {
-  const segments = pathGeometry?.segments ?? [];
-
-  if (segments.length === 0) {
-    return null;
-  }
-
-  const segment = segments[0];
-
-  const position = {
-    x: segment.start.x,
-
-    y: segment.start.y,
-  };
-
-  let tangentX = 0;
-  let tangentY = 0;
-
-  if (segment.type === "line") {
-    tangentX = segment.start.x - segment.end.x;
-
-    tangentY = segment.start.y - segment.end.y;
-  }
-
-  if (segment.type === "quadratic") {
-    tangentX = segment.start.x - segment.control.x;
-
-    tangentY = segment.start.y - segment.control.y;
-  }
-
-  const tangent = normalizeVector(tangentX, tangentY);
-
-  if (!tangent) {
-    return null;
-  }
-
-  return {
-    position,
-    bodyTangent: tangent,
-    headTangent: tangent,
-  };
-}
-
-export function getRoundedPathFrontFrame(pathGeometry) {
-  const segments = pathGeometry?.segments ?? [];
-
-  if (segments.length === 0) {
-    return null;
-  }
-
-  const position = {
-    x: segments[0].start.x,
-
-    y: segments[0].start.y,
-  };
-
-  const localTangent = getLocalPathTangent(pathGeometry, 0);
-
-  const integratedTangent = getIntegratedFrontTangent(pathGeometry);
-
-  const turnTangent = getFrontTurnTangent(pathGeometry, position);
-
-  const bodyTangent = localTangent ?? integratedTangent;
-
-  const headTangent = turnTangent ?? integratedTangent ?? localTangent;
-
-  if (!bodyTangent || !headTangent) {
-    return getFallbackFrontFrame(pathGeometry);
-  }
-
-  return {
-    position,
-    bodyTangent,
-    headTangent,
   };
 }
 

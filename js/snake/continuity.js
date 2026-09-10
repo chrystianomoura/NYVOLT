@@ -1,5 +1,5 @@
 /* =========================================================
-   JARAKA — SNAKE CONTINUITY
+   NYVOLT — SNAKE CONTINUITY
    ========================================================= */
 
 import { EPSILON, GRID_COLUMNS, GRID_ROWS } from "../game/config.js";
@@ -127,7 +127,6 @@ export function resolveHeadAnchors(snake, previousSnake) {
 
   cachedContinuousState = {
     currentHead: currentVirtualHead,
-
     previousHead: previousVirtualHead,
   };
 

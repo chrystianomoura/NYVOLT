@@ -1,12 +1,5 @@
 /* =========================================================
-   JARAKA — START SCREEN
-   Fluxo de configuração da partida
-
-   Etapas:
-   1. entrada;
-   2. personagem;
-   3. modo;
-   4. gameplay.
+   NYVOLT — START SCREEN
    ========================================================= */
 
 import { setTheme } from "./theme.js";
@@ -18,17 +11,17 @@ import { setTheme } from "./theme.js";
 const VALID_MODES = new Set(["classic", "no-wall"]);
 
 /* =========================================================
-   FACTORY
+   CONTROLLER
    ========================================================= */
 
 export function createStartScreen({ element, soundController, onStart }) {
   if (!element) {
-    throw new Error("JARAKA — start screen não encontrada.");
+    throw new Error("NYVOLT — start screen não encontrada.");
   }
 
-  /* =======================================================
+  /* =========================================================
      DOM
-     ======================================================= */
+     ========================================================= */
 
   const playButton = element.querySelector("#start-play");
 
@@ -40,25 +33,25 @@ export function createStartScreen({ element, soundController, onStart }) {
 
   const modeButtons = [...element.querySelectorAll("[data-mode]")];
 
-  /* =======================================================
+  /* =========================================================
      ESTADO
-     ======================================================= */
+     ========================================================= */
 
   let selectedCharacter = null;
 
   let selectedMode = null;
 
-  /* =======================================================
-     SOM — MENU
-     ======================================================= */
+  /* =========================================================
+     SOM
+     ========================================================= */
 
   function playMenuSound() {
     soundController?.play("menu");
   }
 
-  /* =======================================================
-     SELEÇÃO EXCLUSIVA
-     ======================================================= */
+  /* =========================================================
+     SELEÇÃO
+     ========================================================= */
 
   function selectOnly(buttons, selectedButton) {
     buttons.forEach((button) => {
@@ -66,13 +59,12 @@ export function createStartScreen({ element, soundController, onStart }) {
     });
   }
 
-  /* =======================================================
+  /* =========================================================
      RESET
-     ======================================================= */
+     ========================================================= */
 
   function reset() {
     selectedCharacter = null;
-
     selectedMode = null;
 
     characterButtons.forEach((button) => {
@@ -84,33 +76,29 @@ export function createStartScreen({ element, soundController, onStart }) {
     });
 
     playButton.hidden = false;
-
     characterStep.hidden = true;
-
     modeStep.hidden = true;
 
     element.removeAttribute("data-step");
   }
 
-  /* =======================================================
-     ETAPA 1 → PERSONAGENS
-     ======================================================= */
+  /* =========================================================
+     PERSONAGENS
+     ========================================================= */
 
   function revealCharacters() {
     playMenuSound();
 
     playButton.hidden = true;
-
     characterStep.hidden = false;
-
     modeStep.hidden = true;
 
     element.dataset.step = "character";
   }
 
-  /* =======================================================
-     ETAPA 2 → MODO
-     ======================================================= */
+  /* =========================================================
+     PERSONAGEM
+     ========================================================= */
 
   function selectCharacter(button) {
     const character = button.dataset.character;
@@ -125,23 +113,17 @@ export function createStartScreen({ element, soundController, onStart }) {
 
     selectOnly(characterButtons, button);
 
-    /*
-     * O som só é disparado depois da confirmação
-     * de que o personagem e o tema são válidos.
-     */
-
     playMenuSound();
 
     characterStep.hidden = true;
-
     modeStep.hidden = false;
 
     element.dataset.step = "mode";
   }
 
-  /* =======================================================
-     ETAPA 3 → GAMEPLAY
-     ======================================================= */
+  /* =========================================================
+     MODO
+     ========================================================= */
 
   function selectMode(button) {
     const mode = button.dataset.mode;
@@ -154,23 +136,17 @@ export function createStartScreen({ element, soundController, onStart }) {
 
     selectOnly(modeButtons, button);
 
-    /*
-     * Confirmação final do menu antes de iniciar
-     * a sequência de gameplay.
-     */
-
     playMenuSound();
 
     onStart?.({
       character: selectedCharacter,
-
       mode: selectedMode,
     });
   }
 
-  /* =======================================================
+  /* =========================================================
      EVENTOS
-     ======================================================= */
+     ========================================================= */
 
   playButton.addEventListener("click", revealCharacters);
 
@@ -186,9 +162,9 @@ export function createStartScreen({ element, soundController, onStart }) {
     });
   });
 
-  /* =======================================================
+  /* =========================================================
      API
-     ======================================================= */
+     ========================================================= */
 
   return {
     reset,

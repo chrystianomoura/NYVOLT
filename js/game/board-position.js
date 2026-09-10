@@ -1,20 +1,5 @@
 /* =========================================================
-   JARAKA — BOARD POSITION
-   Operações espaciais do grid lógico
-
-   Responsabilidades:
-   - identificar posições fora dos limites;
-   - normalizar posições para o lado oposto do tabuleiro;
-   - identificar por qual borda ocorreu a travessia.
-
-   Este módulo NÃO conhece:
-   - CLASSIC;
-   - NO WALL;
-   - cobra;
-   - colisão;
-   - renderização.
-
-   Ele trabalha exclusivamente com coordenadas do grid.
+   NYVOLT — BOARD POSITION
    ========================================================= */
 
 import { GRID_COLUMNS, GRID_ROWS } from "./config.js";
@@ -28,7 +13,7 @@ export function isOutsideBoard({ x, y }) {
 }
 
 /* =========================================================
-   BORDA ATRAVESSADA
+   BORDA
    ========================================================= */
 
 export function getCrossedBoundary({ x, y }) {
@@ -66,21 +51,12 @@ function wrapCoordinate(value, size) {
 export function wrapPosition({ x, y }) {
   return {
     x: wrapCoordinate(x, GRID_COLUMNS),
-
     y: wrapCoordinate(y, GRID_ROWS),
   };
 }
 
 /* =========================================================
-   RESOLUÇÃO DA POSIÇÃO
-
-   Mantemos:
-   - posição original;
-   - posição normalizada;
-   - informação de travessia;
-   - borda atravessada.
-
-   Isso será útil posteriormente para a camada visual.
+   RESOLUÇÃO
    ========================================================= */
 
 export function resolveBoardPosition(position) {
@@ -94,7 +70,6 @@ export function resolveBoardPosition(position) {
       },
 
       crossed: false,
-
       boundary: null,
     };
   }
@@ -103,7 +78,6 @@ export function resolveBoardPosition(position) {
     position: wrapPosition(position),
 
     crossed: true,
-
     boundary: crossedBoundary,
   };
 }

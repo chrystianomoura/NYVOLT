@@ -1,13 +1,5 @@
 /* =========================================================
-   JARAKA — THEME
-   Identidade da personagem ativa
-
-   Responsabilidades:
-   - validar temas;
-   - aplicar o tema cromático;
-   - manter a personagem ativa;
-   - atualizar o nome exibido na arena;
-   - notificar módulos interessados quando o tema mudar.
+   NYVOLT — THEME
    ========================================================= */
 
 /* =========================================================
@@ -51,7 +43,7 @@ const CHARACTERS = Object.freeze({
    EVENTOS
    ========================================================= */
 
-export const THEME_CHANGE_EVENT = "jaraka:themechange";
+export const THEME_CHANGE_EVENT = "nyvolt:themechange";
 
 /* =========================================================
    VALIDAÇÃO
@@ -84,7 +76,7 @@ function normalizeTheme(theme) {
 }
 
 /* =========================================================
-   DOM — NOME DA PERSONAGEM
+   NOME
    ========================================================= */
 
 function updateCharacterName(theme) {
@@ -104,7 +96,7 @@ function updateCharacterName(theme) {
 }
 
 /* =========================================================
-   EVENTO — ALTERAÇÃO DE TEMA
+   EVENTO
    ========================================================= */
 
 function dispatchThemeChange(theme) {
@@ -156,7 +148,7 @@ export function getCurrentCharacter() {
 }
 
 /* =========================================================
-   PERSONAGEM POR TEMA
+   PERSONAGEM
    ========================================================= */
 
 export function getCharacter(theme) {

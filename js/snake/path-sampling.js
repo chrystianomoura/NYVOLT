@@ -1,5 +1,5 @@
 /* =========================================================
-   JARAKA — PATH SAMPLING
+   NYVOLT — PATH SAMPLING
    ========================================================= */
 
 import { EPSILON } from "../game/config.js";

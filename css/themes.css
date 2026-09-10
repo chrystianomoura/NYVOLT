@@ -1,19 +1,9 @@
 /* =========================================================
-   JARAKA — THEMES
-   Sistema cromático das personagens
-
-   Regra:
-   cada personagem possui UMA cor principal.
-
-   HUD, arena, moldura, assinatura e iluminação
-   são derivados dessa mesma cor.
-
-   Isso mantém toda a experiência visual
-   dentro da mesma família cromática.
+   NYVOLT — THEMES
    ========================================================= */
 
 /* =========================================================
-   BASE / FALLBACK — AZULLY
+   BASE — AZULLY
    ========================================================= */
 
 :root {
@@ -23,15 +13,7 @@
   --snake-highlight: #8be9ff;
   --snake-shadow: #087dcc;
 
-  /* =======================================================
-     HUD
-     ======================================================= */
-
   --theme-hud: var(--theme-color);
-
-  /* =======================================================
-     ARENA — ILUMINAÇÃO
-     ======================================================= */
 
   --arena-light-primary: color-mix(
     in srgb,
@@ -55,13 +37,6 @@
     transparent
   );
 
-  /* =======================================================
-     ARENA — FUNDO
-
-     Sempre muito escuro.
-     A cor da personagem entra apenas como pigmento.
-     ======================================================= */
-
   --arena-bg-1: color-mix(in srgb, var(--theme-color) 11%, #02040c);
 
   --arena-bg-2: color-mix(in srgb, var(--theme-color) 8%, #02040c);
@@ -71,10 +46,6 @@
   --arena-bg-4: color-mix(in srgb, var(--theme-color) 4.5%, #02040c);
 
   --arena-bg-5: color-mix(in srgb, var(--theme-color) 3%, #02040c);
-
-  /* =======================================================
-     MICROTEXTURA
-     ======================================================= */
 
   --arena-texture-primary: color-mix(
     in srgb,
@@ -100,16 +71,6 @@
     transparent
   );
 
-  /* =======================================================
-     MARCA
-     ======================================================= */
-
-  --arena-brand: var(--theme-color);
-
-  /* =======================================================
-     MOLDURA
-     ======================================================= */
-
   --arena-border: var(--theme-color);
 
   --arena-frame-line: color-mix(in srgb, var(--theme-color) 16%, transparent);
@@ -127,18 +88,6 @@
   );
 
   --arena-frame-inner: color-mix(in srgb, var(--theme-color) 32%, white);
-
-  /* =======================================================
-     COBRA — GLOW
-     ======================================================= */
-
-  --snake-glow-soft: color-mix(in srgb, var(--theme-color) 28%, transparent);
-
-  --snake-glow-subtle: color-mix(in srgb, var(--theme-color) 12%, transparent);
-
-  --snake-glow-strong: color-mix(in srgb, var(--theme-color) 32%, transparent);
-
-  --snake-glow-deep: color-mix(in srgb, var(--theme-color) 13%, transparent);
 }
 
 /* =========================================================
@@ -149,9 +98,7 @@
   --theme-color: #27c8ff;
 
   --snake-main: var(--theme-color);
-
   --snake-highlight: #8be9ff;
-
   --snake-shadow: #087dcc;
 }
 
@@ -163,9 +110,7 @@
   --theme-color: #39ff6a;
 
   --snake-main: var(--theme-color);
-
   --snake-highlight: #8cff63;
-
   --snake-shadow: #13c94d;
 }
 
@@ -177,9 +122,7 @@
   --theme-color: #ffd429;
 
   --snake-main: var(--theme-color);
-
   --snake-highlight: #fff685;
-
   --snake-shadow: #e5b900;
 }
 
@@ -191,8 +134,6 @@
   --theme-color: #ff3d5a;
 
   --snake-main: var(--theme-color);
-
   --snake-highlight: #ff8a9c;
-
   --snake-shadow: #c9163b;
 }

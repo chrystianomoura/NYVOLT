@@ -1,39 +1,34 @@
 /* =========================================================
-   JARAKA — SCORE
-   Pontuação e recordes
-
-   Responsabilidades:
-   - manter a pontuação da partida atual;
-   - manter recordes independentes por modo;
-   - persistir os recordes no localStorage;
-   - atualizar SCORE e HIGH SCORE no HUD.
-
-   A formatação usa no mínimo 3 dígitos:
-   0   → 000
-   7   → 007
-   42  → 042
-   100 → 100
-   1000 → 1000
+   NYVOLT — SCORE
    ========================================================= */
 
 /* =========================================================
    MODOS
    ========================================================= */
 
-const MODES = {
+const MODES = Object.freeze({
   CLASSIC: "classic",
   NO_WALL: "no-wall",
-};
+});
 
 /* =========================================================
-   CHAVES DE PERSISTÊNCIA
+   PERSISTÊNCIA
    ========================================================= */
 
-const STORAGE_KEYS = {
-  [MODES.CLASSIC]: "jaraka-high-score-classic",
+const STORAGE_KEYS = Object.freeze({
+  [MODES.CLASSIC]: "nyvolt-high-score-classic",
+  [MODES.NO_WALL]: "nyvolt-high-score-no-wall",
+});
 
+const ROUND_KEYS = Object.freeze({
+  [MODES.CLASSIC]: "nyvolt-round-started-classic",
+  [MODES.NO_WALL]: "nyvolt-round-started-no-wall",
+});
+
+const LEGACY_STORAGE_KEYS = Object.freeze({
+  [MODES.CLASSIC]: "jaraka-high-score-classic",
   [MODES.NO_WALL]: "jaraka-high-score-no-wall",
-};
+});
 
 /* =========================================================
    FORMATAÇÃO
@@ -44,48 +39,28 @@ function formatScore(value) {
 }
 
 /* =========================================================
-   LEITURA SEGURA
+   STORAGE
    ========================================================= */
 
-function readStoredHighScore(mode) {
-  const storageKey = STORAGE_KEYS[mode];
-
-  if (!storageKey) {
-    return 0;
+function readStorage(key) {
+  if (!key) {
+    return null;
   }
 
   try {
-    const storedValue = window.localStorage.getItem(storageKey);
-
-    if (storedValue === null) {
-      return 0;
-    }
-
-    const parsedValue = Number.parseInt(storedValue, 10);
-
-    if (!Number.isFinite(parsedValue) || parsedValue < 0) {
-      return 0;
-    }
-
-    return parsedValue;
+    return window.localStorage.getItem(key);
   } catch {
-    return 0;
+    return null;
   }
 }
 
-/* =========================================================
-   ESCRITA SEGURA
-   ========================================================= */
-
-function writeStoredHighScore(mode, value) {
-  const storageKey = STORAGE_KEYS[mode];
-
-  if (!storageKey) {
+function writeStorage(key, value) {
+  if (!key) {
     return false;
   }
 
   try {
-    window.localStorage.setItem(storageKey, String(value));
+    window.localStorage.setItem(key, String(value));
 
     return true;
   } catch {
@@ -93,20 +68,114 @@ function writeStoredHighScore(mode, value) {
   }
 }
 
+function removeStorage(key) {
+  if (!key) {
+    return;
+  }
+
+  try {
+    window.localStorage.removeItem(key);
+  } catch {
+    return;
+  }
+}
+
+/* =========================================================
+   MIGRAÇÃO
+   ========================================================= */
+
+function migrateLegacyHighScore(mode) {
+  const storageKey = STORAGE_KEYS[mode];
+  const legacyKey = LEGACY_STORAGE_KEYS[mode];
+
+  if (!storageKey || !legacyKey) {
+    return;
+  }
+
+  if (readStorage(storageKey) !== null) {
+    return;
+  }
+
+  const legacyValue = readStorage(legacyKey);
+
+  if (legacyValue === null) {
+    return;
+  }
+
+  const parsedValue = Number.parseInt(legacyValue, 10);
+
+  if (!Number.isFinite(parsedValue) || parsedValue < 0) {
+    return;
+  }
+
+  if (writeStorage(storageKey, parsedValue)) {
+    writeStorage(ROUND_KEYS[mode], "1");
+
+    removeStorage(legacyKey);
+  }
+}
+
+/* =========================================================
+   HIGH SCORE
+   ========================================================= */
+
+function readStoredHighScore(mode) {
+  migrateLegacyHighScore(mode);
+
+  const storedValue = readStorage(STORAGE_KEYS[mode]);
+
+  if (storedValue === null) {
+    return 0;
+  }
+
+  const parsedValue = Number.parseInt(storedValue, 10);
+
+  if (!Number.isFinite(parsedValue) || parsedValue < 0) {
+    return 0;
+  }
+
+  return parsedValue;
+}
+
+function writeStoredHighScore(mode, value) {
+  return writeStorage(STORAGE_KEYS[mode], value);
+}
+
+/* =========================================================
+   HISTÓRICO DE PARTIDAS
+   ========================================================= */
+
+function hasPreviousRound(mode) {
+  migrateLegacyHighScore(mode);
+
+  return readStorage(ROUND_KEYS[mode]) === "1";
+}
+
+function registerRound(mode) {
+  return writeStorage(ROUND_KEYS[mode], "1");
+}
+
 /* =========================================================
    CONTROLLER
    ========================================================= */
 
-export function createScoreController({ scoreElement, highScoreElement }) {
+export function createScoreController({
+  scoreElement,
+  highScoreElement,
+  onHighScore,
+}) {
   let score = 0;
-
   let highScore = 0;
+  let previousHighScore = 0;
 
   let currentMode = null;
 
-  /* =======================================================
+  let highScoreSoundEnabled = false;
+  let highScoreTriggered = false;
+
+  /* =========================================================
      RENDER
-     ======================================================= */
+     ========================================================= */
 
   function renderScore() {
     if (!scoreElement) {
@@ -126,13 +195,12 @@ export function createScoreController({ scoreElement, highScoreElement }) {
 
   function render() {
     renderScore();
-
     renderHighScore();
   }
 
-  /* =======================================================
+  /* =========================================================
      NOVA PARTIDA
-     ======================================================= */
+     ========================================================= */
 
   function startRound(mode) {
     if (!STORAGE_KEYS[mode]) {
@@ -144,15 +212,45 @@ export function createScoreController({ scoreElement, highScoreElement }) {
     score = 0;
 
     highScore = readStoredHighScore(mode);
+    previousHighScore = highScore;
+
+    highScoreSoundEnabled = hasPreviousRound(mode);
+    highScoreTriggered = false;
+
+    registerRound(mode);
 
     render();
 
     return true;
   }
 
-  /* =======================================================
+  /* =========================================================
+     NOVO RECORDE
+     ========================================================= */
+
+  function triggerHighScore() {
+    if (!highScoreSoundEnabled || highScoreTriggered) {
+      return;
+    }
+
+    if (score <= previousHighScore) {
+      return;
+    }
+
+    highScoreTriggered = true;
+
+    if (typeof onHighScore === "function") {
+      onHighScore({
+        mode: currentMode,
+        score,
+        previousHighScore,
+      });
+    }
+  }
+
+  /* =========================================================
      PONTUAÇÃO
-     ======================================================= */
+     ========================================================= */
 
   function increment() {
     if (!currentMode) {
@@ -160,6 +258,8 @@ export function createScoreController({ scoreElement, highScoreElement }) {
     }
 
     score += 1;
+
+    triggerHighScore();
 
     if (score > highScore) {
       highScore = score;
@@ -172,9 +272,9 @@ export function createScoreController({ scoreElement, highScoreElement }) {
     return score;
   }
 
-  /* =======================================================
+  /* =========================================================
      LEITURA
-     ======================================================= */
+     ========================================================= */
 
   function getScore() {
     return score;
@@ -188,15 +288,15 @@ export function createScoreController({ scoreElement, highScoreElement }) {
     return currentMode;
   }
 
-  /* =======================================================
+  /* =========================================================
      ESTADO INICIAL
-     ======================================================= */
+     ========================================================= */
 
   render();
 
-  /* =======================================================
+  /* =========================================================
      API
-     ======================================================= */
+     ========================================================= */
 
   return {
     startRound,

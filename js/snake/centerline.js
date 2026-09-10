@@ -1,5 +1,5 @@
 /* =========================================================
-   JARAKA — SNAKE CENTERLINE
+   NYVOLT — SNAKE CENTERLINE
    ========================================================= */
 
 import { EPSILON } from "../game/config.js";

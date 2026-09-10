@@ -1,14 +1,5 @@
 /* =========================================================
-   JARAKA — GAME STATE
-   Estado central da partida
-
-   Responsabilidades:
-   - manter a cobra lógica;
-   - manter os estados visuais atual e anterior;
-   - manter o estado de game over;
-   - manter o motivo do encerramento da partida.
-
-   Este módulo não contém regras de jogo.
+   NYVOLT — GAME STATE
    ========================================================= */
 
 /* =========================================================
@@ -36,17 +27,17 @@ export function createGameState({ initialSnake }) {
 
   let gameOverReason = null;
 
-  /* =======================================================
-     COBRA LÓGICA
-     ======================================================= */
+  /* =========================================================
+     ESTADO LÓGICO
+     ========================================================= */
 
   function getSnake() {
     return snake;
   }
 
-  /* =======================================================
+  /* =========================================================
      ESTADO VISUAL
-     ======================================================= */
+     ========================================================= */
 
   function getRenderSnake() {
     return renderSnake;
@@ -64,9 +55,9 @@ export function createGameState({ initialSnake }) {
     renderSnake = nextSnake;
   }
 
-  /* =======================================================
+  /* =========================================================
      GAME OVER
-     ======================================================= */
+     ========================================================= */
 
   function isGameOver() {
     return gameOver;
@@ -86,6 +77,10 @@ export function createGameState({ initialSnake }) {
 
     return true;
   }
+
+  /* =========================================================
+     API
+     ========================================================= */
 
   return {
     getSnake,

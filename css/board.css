@@ -1,19 +1,9 @@
 /* =========================================================
-   JARAKA — BOARD
-   Arena principal
-
-   Responsabilidades:
-   - estrutura física da arena;
-   - fundo atmosférico;
-   - microtextura;
-   - identidade JARAKA + personagem;
-   - moldura neon;
-   - clipping dos atores;
-   - hierarquia de camadas.
+   NYVOLT — BOARD
    ========================================================= */
 
 /* =========================================================
-   BOARD EXTERNO
+   BOARD
    ========================================================= */
 
 .game-board {
@@ -41,16 +31,6 @@
   touch-action: none;
 }
 
-/* =========================================================
-   BLOQUEIO DE SELEÇÃO / GESTOS NATIVOS
-
-   Impede que Safari/iOS interprete os swipes do jogo como:
-   - seleção de texto;
-   - handles azuis;
-   - menu de long press;
-   - gestos nativos dentro da arena.
-   ========================================================= */
-
 .game-board *,
 .game-board *::before,
 .game-board *::after {
@@ -63,7 +43,7 @@
 }
 
 /* =========================================================
-   VIEWPORT INTERNA
+   VIEWPORT
    ========================================================= */
 
 .game-board__viewport {
@@ -151,7 +131,7 @@
 }
 
 /* =========================================================
-   IDENTIDADE JARAKA
+   IDENTIDADE
    ========================================================= */
 
 .game-board__brand {
@@ -188,10 +168,6 @@
   z-index: 3;
 }
 
-/* =========================================================
-   MARCA PRINCIPAL
-   ========================================================= */
-
 .game-board__brand-title {
   font-size: clamp(23px, calc(var(--board-width) * 0.14), 44px);
 
@@ -205,13 +181,6 @@
 
   opacity: 0.68;
 }
-
-/* =========================================================
-   NOME DA PERSONAGEM
-
-   Mesma linguagem tipográfica da marca JARAKA.
-   Apenas o tamanho é menor.
-   ========================================================= */
 
 .game-board__character-name {
   font-size: clamp(11px, calc(var(--board-width) * 0.046), 17px);
@@ -229,12 +198,6 @@
 
 /* =========================================================
    PROFUNDIDADE
-
-   Permanece acima do fundo e da identidade da arena,
-   mas abaixo dos atores.
-
-   Isso evita que o sombreado periférico cubra visualmente
-   a cabeça da cobra quando ela passa rente aos limites.
    ========================================================= */
 
 .game-board__viewport::after {
@@ -274,13 +237,7 @@
 }
 
 /* =========================================================
-   MOLDURA EXTERNA
-
-   A moldura permanece fora da arena e mantém todo o glow,
-   mas agora fica atrás da viewport.
-
-   O clipping continua sendo responsabilidade exclusiva de:
-   .game-board__viewport { overflow: hidden; }
+   MOLDURA
    ========================================================= */
 
 .game-board::after {
@@ -308,7 +265,7 @@
 }
 
 /* =========================================================
-   CAMADAS INTERNAS
+   CAMADAS
    ========================================================= */
 
 .game-board__viewport > * {
@@ -316,10 +273,7 @@
 }
 
 /* =========================================================
-   SNAKE
-
-   Acima da profundidade da arena para que a cabeça
-   permaneça visualmente íntegra até o clipping real.
+   NYVOLT
    ========================================================= */
 
 .snake-layer {
@@ -331,12 +285,19 @@
   z-index: 20;
 }
 
-/* =========================================================
-   RATO
-   ========================================================= */
+.snake-body-canvas {
+  position: absolute;
 
-.mouse-food {
-  z-index: 30;
+  inset: 0;
+
+  width: 100%;
+  height: 100%;
+
+  display: block;
+
+  pointer-events: none;
+
+  z-index: 1;
 }
 
 /* =========================================================

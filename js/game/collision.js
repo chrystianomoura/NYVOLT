@@ -1,16 +1,6 @@
 /* =========================================================
-   JARAKA — COLLISION
-   Regras de colisão e comparação de posições
-
-   Responsabilidades:
-   - comparar posições do grid;
-   - detectar colisão com os limites do tabuleiro;
-   - detectar colisão da cobra com o próprio corpo.
-
-   Este módulo não altera estado do jogo.
+   NYVOLT — COLLISION
    ========================================================= */
-
-import { GRID_COLUMNS, GRID_ROWS } from "./config.js";
 
 /* =========================================================
    POSIÇÕES
@@ -21,20 +11,7 @@ export function isSamePosition(first, second) {
 }
 
 /* =========================================================
-   COLISÃO — PAREDES
-   ========================================================= */
-
-export function willHitWall(position) {
-  return (
-    position.x < 0 ||
-    position.x >= GRID_COLUMNS ||
-    position.y < 0 ||
-    position.y >= GRID_ROWS
-  );
-}
-
-/* =========================================================
-   COLISÃO — PRÓPRIO CORPO
+   AUTOCOLISÃO
    ========================================================= */
 
 export function willHitSelf({

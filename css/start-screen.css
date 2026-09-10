@@ -1,13 +1,5 @@
 /* =========================================================
-   JARAKA — START SCREEN
-
-   Estrutura:
-   - todas as etapas ocupam a mesma tela;
-   - todo estado é centralizado verticalmente;
-   - personagens em uma coluna;
-   - modos em uma coluna;
-   - entrada neutra em branco;
-   - escala controlada em telas maiores.
+   NYVOLT — START SCREEN
    ========================================================= */
 
 /* =========================================================
@@ -26,12 +18,10 @@
   place-items: center;
 
   padding: clamp(12px, 2.5svh, 28px) clamp(16px, 5vw, 32px);
-
-  box-sizing: border-box;
 }
 
 /* =========================================================
-   OCULTOS
+   VISIBILIDADE
    ========================================================= */
 
 .start-screen[hidden],
@@ -83,7 +73,7 @@
 }
 
 /* =========================================================
-   JARAKA
+   TÍTULO
    ========================================================= */
 
 .start-screen__title {
@@ -148,8 +138,6 @@
 
   cursor: pointer;
 
-  box-sizing: border-box;
-
   transition:
     transform 140ms ease,
     background 140ms ease,
@@ -190,10 +178,6 @@
   row-gap: clamp(20px, 3.5svh, 30px);
 }
 
-/* =========================================================
-   TÍTULO DAS ETAPAS
-   ========================================================= */
-
 .start-screen__step-title {
   width: 100%;
 
@@ -218,7 +202,7 @@
 }
 
 /* =========================================================
-   PERSONAGENS
+   NYVOLTS
    ========================================================= */
 
 .character-grid {
@@ -270,8 +254,6 @@
 
   cursor: pointer;
 
-  box-sizing: border-box;
-
   transition:
     transform 140ms ease,
     border-color 140ms ease,
@@ -280,7 +262,7 @@
 }
 
 /* =========================================================
-   CORES
+   NYVOLTS — CORES
    ========================================================= */
 
 .character-card[data-character="amarellow"] {
@@ -300,7 +282,7 @@
 }
 
 /* =========================================================
-   PERSONAGENS — INTERAÇÃO
+   NYVOLTS — INTERAÇÃO
    ========================================================= */
 
 .character-card:hover {
@@ -341,7 +323,7 @@
 }
 
 /* =========================================================
-   TELA DE MODO
+   MODO
    ========================================================= */
 
 .start-screen__step--mode {
@@ -353,10 +335,6 @@
 
   letter-spacing: 0.11em;
 }
-
-/* =========================================================
-   MODOS
-   ========================================================= */
 
 .mode-options {
   width: min(100%, 310px);
@@ -408,8 +386,6 @@
   letter-spacing: 0.08em;
 
   cursor: pointer;
-
-  box-sizing: border-box;
 
   transition:
     transform 140ms ease,

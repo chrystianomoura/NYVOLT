@@ -1,26 +1,11 @@
 /* =========================================================
-   JARAKA — LOOP
-   Controle temporal do jogo
-
-   Responsabilidades:
-   - executar ticks lógicos em intervalo fixo;
-   - calcular o progresso visual entre ticks;
-   - coordenar requestAnimationFrame;
-   - iniciar cada execução com relógio limpo.
-
-   Este módulo não conhece:
-   - cobra;
-   - colisão;
-   - alimentação;
-   - crescimento;
-   - renderer específico;
-   - input.
+   NYVOLT — LOOP
    ========================================================= */
 
 import { MOVE_INTERVAL } from "./config.js";
 
 /* =========================================================
-   FACTORY
+   CONTROLLER
    ========================================================= */
 
 export function createGameLoop({ onMove, onRender, isGameOver }) {
@@ -28,9 +13,9 @@ export function createGameLoop({ onMove, onRender, isGameOver }) {
 
   let animationFrameId = null;
 
-  /* =======================================================
+  /* =========================================================
      FRAME
-     ======================================================= */
+     ========================================================= */
 
   function frame(timestamp) {
     if (isGameOver()) {
@@ -38,10 +23,6 @@ export function createGameLoop({ onMove, onRender, isGameOver }) {
 
       return;
     }
-
-    /* -----------------------------------------------------
-       MOVIMENTO LÓGICO
-       ----------------------------------------------------- */
 
     while (timestamp - lastMoveTime >= MOVE_INTERVAL) {
       onMove();
@@ -55,50 +36,30 @@ export function createGameLoop({ onMove, onRender, isGameOver }) {
       lastMoveTime += MOVE_INTERVAL;
     }
 
-    /* -----------------------------------------------------
-       INTERPOLAÇÃO VISUAL
-       ----------------------------------------------------- */
-
     const progress = Math.min((timestamp - lastMoveTime) / MOVE_INTERVAL, 1);
 
     onRender(progress);
 
-    /* -----------------------------------------------------
-       PRÓXIMO FRAME
-       ----------------------------------------------------- */
-
     animationFrameId = requestAnimationFrame(frame);
   }
 
-  /* =======================================================
+  /* =========================================================
      START
-     ======================================================= */
+     ========================================================= */
 
   function start() {
     if (animationFrameId !== null) {
       return;
     }
 
-    /*
-     * O relógio começa AGORA.
-     *
-     * Tempo passado em:
-     * - tela inicial;
-     * - seleção de personagem;
-     * - seleção de modo;
-     * - countdown;
-     *
-     * não pertence ao tempo da partida.
-     */
-
     lastMoveTime = performance.now();
 
     animationFrameId = requestAnimationFrame(frame);
   }
 
-  /* =======================================================
+  /* =========================================================
      STOP
-     ======================================================= */
+     ========================================================= */
 
   function stop() {
     if (animationFrameId === null) {
@@ -110,9 +71,9 @@ export function createGameLoop({ onMove, onRender, isGameOver }) {
     animationFrameId = null;
   }
 
-  /* =======================================================
+  /* =========================================================
      API
-     ======================================================= */
+     ========================================================= */
 
   return {
     start,

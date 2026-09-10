@@ -1,20 +1,5 @@
 /* =========================================================
    NYVOLT — ENERGY ORB
-
-   Renderer em Canvas 2D responsável exclusivamente
-   pela representação visual do orbe de energia.
-
-   Responsabilidades:
-   - criar e gerenciar o canvas;
-   - acompanhar o tamanho visual do elemento;
-   - acompanhar dinamicamente o tema da NYVOLT;
-   - renderizar o corpo energético;
-   - renderizar partículas internas;
-   - renderizar o núcleo;
-   - produzir pulsação e rotação contínuas.
-
-   A posição lógica do orbe é controlada
-   externamente pelo sistema de food.
    ========================================================= */
 
 /* =========================================================
@@ -24,15 +9,12 @@
 const MIN_SIZE = 1;
 
 const ORB_RADIUS_SCALE = 0.39;
-
 const INNER_RING_RADIUS_SCALE = 0.68;
-
 const CORE_RADIUS_SCALE = 0.34;
 
 const PARTICLE_COUNT = 5;
 
 const PULSE_SPEED = 0.0042;
-
 const ROTATION_SPEED = 0.0018;
 
 /* =========================================================
@@ -56,9 +38,9 @@ function getPixelRatio() {
    ========================================================= */
 
 export function createOrbController({ element }) {
-  /* =======================================================
+  /* =========================================================
      CANVAS
-     ======================================================= */
+     ========================================================= */
 
   const canvas = document.createElement("canvas");
 
@@ -81,17 +63,14 @@ export function createOrbController({ element }) {
   const context = canvas.getContext("2d");
 
   let canvasWidth = 0;
-
   let canvasHeight = 0;
-
   let pixelRatio = 1;
 
-  /* =======================================================
+  /* =========================================================
      CORES
-     ======================================================= */
+     ========================================================= */
 
   let mainColor = "#27c8ff";
-
   let highlightColor = "#8be9ff";
 
   function resolveColors() {
@@ -108,9 +87,9 @@ export function createOrbController({ element }) {
     highlightColor = nextHighlightColor || mainColor;
   }
 
-  /* =======================================================
+  /* =========================================================
      TAMANHO
-     ======================================================= */
+     ========================================================= */
 
   function resizeCanvas() {
     if (!element || !context) {
@@ -131,9 +110,7 @@ export function createOrbController({ element }) {
 
     if (canvas.width === requiredWidth && canvas.height === requiredHeight) {
       canvasWidth = width;
-
       canvasHeight = height;
-
       pixelRatio = nextPixelRatio;
 
       return false;
@@ -144,17 +121,15 @@ export function createOrbController({ element }) {
     canvas.height = requiredHeight;
 
     canvasWidth = width;
-
     canvasHeight = height;
-
     pixelRatio = nextPixelRatio;
 
     return true;
   }
 
-  /* =======================================================
-     CORPO DO ORBE
-     ======================================================= */
+  /* =========================================================
+     CORPO
+     ========================================================= */
 
   function drawOrbBody({ centerX, centerY, radius, pulse }) {
     const gradient = context.createRadialGradient(
@@ -189,9 +164,9 @@ export function createOrbController({ element }) {
     context.restore();
   }
 
-  /* =======================================================
+  /* =========================================================
      ANEL INTERNO
-     ======================================================= */
+     ========================================================= */
 
   function drawInnerRing({ centerX, centerY, radius, rotation, pulse }) {
     const ringRadius = radius * INNER_RING_RADIUS_SCALE;
@@ -229,9 +204,9 @@ export function createOrbController({ element }) {
     context.restore();
   }
 
-  /* =======================================================
-     PARTÍCULAS INTERNAS
-     ======================================================= */
+  /* =========================================================
+     PARTÍCULAS
+     ========================================================= */
 
   function drawParticles({ centerX, centerY, radius, rotation, pulse }) {
     context.save();
@@ -271,9 +246,9 @@ export function createOrbController({ element }) {
     context.restore();
   }
 
-  /* =======================================================
+  /* =========================================================
      NÚCLEO
-     ======================================================= */
+     ========================================================= */
 
   function drawCore({ centerX, centerY, radius, pulse }) {
     const coreRadius =
@@ -309,9 +284,9 @@ export function createOrbController({ element }) {
     context.restore();
   }
 
-  /* =======================================================
+  /* =========================================================
      CONTORNO
-     ======================================================= */
+     ========================================================= */
 
   function drawBoundary({ centerX, centerY, radius, pulse }) {
     const lineWidth = Math.max(1, radius * 0.055);
@@ -335,9 +310,9 @@ export function createOrbController({ element }) {
     context.restore();
   }
 
-  /* =======================================================
+  /* =========================================================
      RENDER
-     ======================================================= */
+     ========================================================= */
 
   function render(timestamp = performance.now()) {
     if (!context || !element) {
@@ -408,27 +383,25 @@ export function createOrbController({ element }) {
     });
   }
 
-  /* =======================================================
+  /* =========================================================
      UPDATE
-     ======================================================= */
+     ========================================================= */
 
   function update() {
     render(performance.now());
   }
 
-  /* =======================================================
+  /* =========================================================
      INICIALIZAÇÃO
-     ======================================================= */
+     ========================================================= */
 
   resizeCanvas();
-
   resolveColors();
-
   render();
 
-  /* =======================================================
+  /* =========================================================
      API
-     ======================================================= */
+     ========================================================= */
 
   return {
     update,

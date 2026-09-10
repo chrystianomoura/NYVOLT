@@ -1,5 +1,5 @@
 /* =========================================================
-   JARAKA — SNAKE CANVAS
+   NYVOLT — SNAKE CANVAS
    ========================================================= */
 
 /* =========================================================
@@ -21,16 +21,16 @@ export function createSnakeCanvas({
   className = "snake-body-canvas",
 }) {
   if (!layer) {
-    throw new Error("JARAKA Canvas: layer não informado.");
+    throw new Error("NYVOLT Canvas: layer não informado.");
   }
 
   if (!isPositiveNumber(columns) || !isPositiveNumber(rows)) {
-    throw new Error("JARAKA Canvas: grid inválido.");
+    throw new Error("NYVOLT Canvas: grid inválido.");
   }
 
-  /* =======================================================
+  /* =========================================================
      ESTADO
-     ======================================================= */
+     ========================================================= */
 
   let canvas = null;
   let context = null;
@@ -42,9 +42,9 @@ export function createSnakeCanvas({
   let height = 0;
   let pixelRatio = 1;
 
-  /* =======================================================
+  /* =========================================================
      PIXEL RATIO
-     ======================================================= */
+     ========================================================= */
 
   function resolvePixelRatio() {
     const ratio = window.devicePixelRatio || 1;
@@ -56,9 +56,9 @@ export function createSnakeCanvas({
     return Math.max(1, ratio);
   }
 
-  /* =======================================================
+  /* =========================================================
      TRANSFORMAÇÃO
-     ======================================================= */
+     ========================================================= */
 
   function applyGridTransform() {
     if (!context || width <= 0 || height <= 0) {
@@ -68,9 +68,9 @@ export function createSnakeCanvas({
     context.setTransform(width / columns, 0, 0, height / rows, 0, 0);
   }
 
-  /* =======================================================
+  /* =========================================================
      RESIZE
-     ======================================================= */
+     ========================================================= */
 
   function resize() {
     if (!canvas || !context) {
@@ -111,9 +111,9 @@ export function createSnakeCanvas({
     return sizeChanged;
   }
 
-  /* =======================================================
+  /* =========================================================
      OBSERVER
-     ======================================================= */
+     ========================================================= */
 
   function stopResizeObserver() {
     if (!resizeObserver) {
@@ -121,7 +121,6 @@ export function createSnakeCanvas({
     }
 
     resizeObserver.disconnect();
-
     resizeObserver = null;
   }
 
@@ -139,9 +138,9 @@ export function createSnakeCanvas({
     resizeObserver.observe(layer);
   }
 
-  /* =======================================================
+  /* =========================================================
      CRIAÇÃO
-     ======================================================= */
+     ========================================================= */
 
   function create() {
     destroy();
@@ -149,6 +148,7 @@ export function createSnakeCanvas({
     canvas = document.createElement("canvas");
 
     canvas.classList.add(className);
+
     canvas.setAttribute("aria-hidden", "true");
 
     context = canvas.getContext("2d", {
@@ -158,7 +158,7 @@ export function createSnakeCanvas({
     if (!context) {
       canvas = null;
 
-      throw new Error("JARAKA Canvas: contexto 2D indisponível.");
+      throw new Error("NYVOLT Canvas: contexto 2D indisponível.");
     }
 
     layer.appendChild(canvas);
@@ -169,9 +169,9 @@ export function createSnakeCanvas({
     return canvas;
   }
 
-  /* =======================================================
+  /* =========================================================
      FRAME
-     ======================================================= */
+     ========================================================= */
 
   function clear() {
     if (!context || !ready) {
@@ -181,9 +181,9 @@ export function createSnakeCanvas({
     context.clearRect(0, 0, columns, rows);
   }
 
-  /* =======================================================
+  /* =========================================================
      CICLO DE VIDA
-     ======================================================= */
+     ========================================================= */
 
   function destroy() {
     stopResizeObserver();
@@ -202,9 +202,9 @@ export function createSnakeCanvas({
     pixelRatio = 1;
   }
 
-  /* =======================================================
+  /* =========================================================
      GETTERS
-     ======================================================= */
+     ========================================================= */
 
   function getCanvas() {
     return canvas;
@@ -228,9 +228,9 @@ export function createSnakeCanvas({
     return ready;
   }
 
-  /* =======================================================
+  /* =========================================================
      API
-     ======================================================= */
+     ========================================================= */
 
   return {
     create,

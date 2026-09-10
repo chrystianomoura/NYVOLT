@@ -1,17 +1,5 @@
 /* =========================================================
-   NYVOLT — ENERGY ORB
-   Gerenciamento do orbe de energia durante a partida
-
-   Responsabilidades:
-   - manter a posição lógica do orbe;
-   - encontrar células livres;
-   - escolher uma nova posição;
-   - atualizar a posição visual;
-   - controlar o primeiro spawn;
-   - controlar coleta e respawn.
-
-   O controlador lógico e o renderer do orbe
-   compartilham o mesmo objeto de posição.
+   NYVOLT — ORB SPAWN
    ========================================================= */
 
 import { GRID_COLUMNS, GRID_ROWS } from "./config.js";
@@ -22,20 +10,16 @@ import { isSamePosition } from "./collision.js";
    CONTROLLER
    ========================================================= */
 
-export function createFoodController({
+export function createOrbSpawnController({
   element,
-
   position,
-
   orbController,
-
   getSnake,
-
   isGameOver,
 }) {
-  /* =======================================================
+  /* =========================================================
      POSIÇÃO
-     ======================================================= */
+     ========================================================= */
 
   function getPosition() {
     return position;
@@ -51,9 +35,9 @@ export function createFoodController({
     element.style.setProperty("--orb-y", position.y);
   }
 
-  /* =======================================================
-     NYVOLT
-     ======================================================= */
+  /* =========================================================
+     OCUPAÇÃO
+     ========================================================= */
 
   function isNyvoltPosition(candidate) {
     const snake = getSnake();
@@ -61,9 +45,9 @@ export function createFoodController({
     return snake.some((segment) => isSamePosition(segment, candidate));
   }
 
-  /* =======================================================
+  /* =========================================================
      CÉLULAS LIVRES
-     ======================================================= */
+     ========================================================= */
 
   function getFreeCells() {
     const freeCells = [];
@@ -86,9 +70,9 @@ export function createFoodController({
     return freeCells;
   }
 
-  /* =======================================================
+  /* =========================================================
      POSIÇÃO ALEATÓRIA
-     ======================================================= */
+     ========================================================= */
 
   function moveToRandomCell() {
     const freeCells = getFreeCells();
@@ -110,19 +94,19 @@ export function createFoodController({
     return true;
   }
 
-  /* =======================================================
+  /* =========================================================
      ATUALIZAÇÃO VISUAL
-     ======================================================= */
+     ========================================================= */
 
   function updateOrb() {
     orbController?.update();
   }
 
-  /* =======================================================
-     PRIMEIRO SPAWN
-     ======================================================= */
+  /* =========================================================
+     SPAWN
+     ========================================================= */
 
-  function spawnInitial() {
+  function respawn() {
     if (isGameOver()) {
       return false;
     }
@@ -138,9 +122,13 @@ export function createFoodController({
     return true;
   }
 
-  /* =======================================================
-     LIMPEZA ENTRE RODADAS
-     ======================================================= */
+  function spawnInitial() {
+    return respawn();
+  }
+
+  /* =========================================================
+     LIMPEZA
+     ========================================================= */
 
   function resetVisualState() {
     if (!element) {
@@ -148,9 +136,7 @@ export function createFoodController({
     }
 
     element.style.opacity = "";
-
     element.style.scale = "";
-
     element.style.visibility = "";
 
     element.style.removeProperty("transform-origin");
@@ -158,58 +144,23 @@ export function createFoodController({
     updateOrb();
   }
 
-  /* =======================================================
-     RESPAWN
-     ======================================================= */
-
-  function respawnInstantly() {
-    if (isGameOver()) {
-      return false;
-    }
-
-    const spawned = moveToRandomCell();
-
-    if (!spawned) {
-      return false;
-    }
-
-    updateOrb();
-
-    return true;
-  }
-
-  /* =======================================================
+  /* =========================================================
      COLETA
-     ======================================================= */
+     ========================================================= */
 
   function consumeVisually() {
-    if (isGameOver()) {
-      return false;
-    }
-
-    /*
-     * O orbe é absorvido imediatamente
-     * e reaparece em uma nova célula livre.
-     *
-     * A resposta visual da coleta acontece
-     * no núcleo interno da própria NYVOLT.
-     */
-    return respawnInstantly();
+    return respawn();
   }
 
-  /* =======================================================
+  /* =========================================================
      API
-     ======================================================= */
+     ========================================================= */
 
   return {
     getPosition,
-
     spawnInitial,
-
     updatePosition,
-
     consumeVisually,
-
     resetVisualState,
   };
 }

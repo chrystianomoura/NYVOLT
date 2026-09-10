@@ -1,5 +1,5 @@
 /* =========================================================
-   JARAKA — SNAKE GEOMETRY
+   NYVOLT — SNAKE GEOMETRY
    ========================================================= */
 
 import { sampleRoundedPathAtLength } from "./path-sampling.js";
@@ -57,18 +57,15 @@ function getQuadraticPoint(start, control, end, progress) {
 
 export function createSnakeGeometry({ bodyWidth, morphology }) {
   const centerPoints = [];
-
   const boundaryWidths = [];
-
   const directionXs = [];
-
   const directionYs = [];
 
   let centerPointCount = 0;
 
-  /* =======================================================
+  /* =========================================================
      PONTOS
-     ======================================================= */
+     ========================================================= */
 
   function pushCenterPoint(point, distance) {
     if (!point) {
@@ -103,9 +100,9 @@ export function createSnakeGeometry({ bodyWidth, morphology }) {
     centerPointCount += 1;
   }
 
-  /* =======================================================
+  /* =========================================================
      RETAS
-     ======================================================= */
+     ========================================================= */
 
   function pushLineTailSamples(segment, tailStart) {
     const startLength = segment.startLength;
@@ -158,9 +155,9 @@ export function createSnakeGeometry({ bodyWidth, morphology }) {
     }
   }
 
-  /* =======================================================
+  /* =========================================================
      AMOSTRAGEM
-     ======================================================= */
+     ========================================================= */
 
   function buildStructuralBodyPoints(pathGeometry, tailStart) {
     centerPointCount = 0;
@@ -271,9 +268,9 @@ export function createSnakeGeometry({ bodyWidth, morphology }) {
     return centerPointCount;
   }
 
-  /* =======================================================
+  /* =========================================================
      LARGURAS
-     ======================================================= */
+     ========================================================= */
 
   function prepareWidths(tailStart, tailLength, visualGrowth) {
     boundaryWidths.length = centerPointCount;
@@ -305,82 +302,9 @@ export function createSnakeGeometry({ bodyWidth, morphology }) {
     }
   }
 
-  /* =======================================================
-     LARGURA LOCAL
-     ======================================================= */
-
-  function getWidthAtDistance(distance) {
-    if (centerPointCount === 0 || boundaryWidths.length === 0) {
-      return bodyWidth;
-    }
-
-    const firstPoint = centerPoints[0];
-
-    const firstWidth = boundaryWidths[0] ?? bodyWidth;
-
-    /*
-     * Antes ou exatamente no primeiro ponto:
-     * largura normal do início do corpo.
-     */
-    if (distance <= firstPoint.distance + DISTANCE_EPSILON) {
-      return firstWidth;
-    }
-
-    const lastIndex = centerPointCount - 1;
-
-    const lastPoint = centerPoints[lastIndex];
-
-    const lastWidth = boundaryWidths[lastIndex] ?? firstWidth;
-
-    /*
-     * Na ponta ou além da cauda:
-     * usa exatamente a largura final.
-     */
-    if (distance >= lastPoint.distance - DISTANCE_EPSILON) {
-      return lastWidth;
-    }
-
-    /*
-     * Encontramos os dois pontos estruturais
-     * entre os quais essa distância está.
-     *
-     * Depois interpolamos as MESMAS larguras
-     * utilizadas para desenhar o corpo.
-     */
-    for (let index = 0; index < lastIndex; index += 1) {
-      const startPoint = centerPoints[index];
-
-      const endPoint = centerPoints[index + 1];
-
-      if (distance > endPoint.distance + DISTANCE_EPSILON) {
-        continue;
-      }
-
-      const startWidth = boundaryWidths[index] ?? bodyWidth;
-
-      const endWidth = boundaryWidths[index + 1] ?? startWidth;
-
-      const segmentLength = endPoint.distance - startPoint.distance;
-
-      if (segmentLength <= DISTANCE_EPSILON) {
-        return endWidth;
-      }
-
-      const progress = clamp(
-        (distance - startPoint.distance) / segmentLength,
-        0,
-        1,
-      );
-
-      return lerp(startWidth, endWidth, progress);
-    }
-
-    return lastWidth;
-  }
-
-  /* =======================================================
+  /* =========================================================
      DIREÇÕES
-     ======================================================= */
+     ========================================================= */
 
   function prepareDirections() {
     const segmentCount = Math.max(0, centerPointCount - 1);
@@ -415,9 +339,9 @@ export function createSnakeGeometry({ bodyWidth, morphology }) {
     }
   }
 
-  /* =======================================================
+  /* =========================================================
      PREPARAÇÃO
-     ======================================================= */
+     ========================================================= */
 
   function prepare({ pathGeometry, tailStart, tailLength, visualGrowth }) {
     buildStructuralBodyPoints(pathGeometry, tailStart);
@@ -429,23 +353,21 @@ export function createSnakeGeometry({ bodyWidth, morphology }) {
     return centerPointCount;
   }
 
-  /* =======================================================
+  /* =========================================================
      RESET
-     ======================================================= */
+     ========================================================= */
 
   function reset() {
     centerPointCount = 0;
 
     boundaryWidths.length = 0;
-
     directionXs.length = 0;
-
     directionYs.length = 0;
   }
 
-  /* =======================================================
+  /* =========================================================
      GETTERS
-     ======================================================= */
+     ========================================================= */
 
   function getCenterPoints() {
     return centerPoints;
@@ -467,9 +389,9 @@ export function createSnakeGeometry({ bodyWidth, morphology }) {
     return directionYs;
   }
 
-  /* =======================================================
+  /* =========================================================
      API
-     ======================================================= */
+     ========================================================= */
 
   return {
     prepare,
@@ -479,6 +401,5 @@ export function createSnakeGeometry({ bodyWidth, morphology }) {
     getBoundaryWidths,
     getDirectionXs,
     getDirectionYs,
-    getWidthAtDistance,
   };
 }

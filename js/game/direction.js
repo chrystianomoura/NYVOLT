@@ -1,16 +1,5 @@
 /* =========================================================
-   JARAKA — DIRECTION
-   Controle da direção lógica da cobra
-
-   Responsabilidades:
-   - manter a direção atual;
-   - manter a próxima direção aceita;
-   - impedir repetição da direção atual;
-   - impedir inversões de 180 graus;
-   - identificar o lado visual da curva.
-
-   Este módulo não conhece input, renderer ou estado
-   de game over.
+   NYVOLT — DIRECTION
    ========================================================= */
 
 /* =========================================================
@@ -50,21 +39,17 @@ export function createDirectionController(initialDirection) {
     y: initialDirection.y,
   };
 
-  /* =======================================================
+  /* =========================================================
      LEITURA
-     ======================================================= */
+     ========================================================= */
 
   function getDirection() {
     return direction;
   }
 
-  function getQueuedDirection() {
-    return queuedDirection;
-  }
-
-  /* =======================================================
+  /* =========================================================
      APLICAÇÃO
-     ======================================================= */
+     ========================================================= */
 
   function applyQueuedDirection() {
     direction = queuedDirection;
@@ -72,19 +57,11 @@ export function createDirectionController(initialDirection) {
     return direction;
   }
 
-  /* =======================================================
+  /* =========================================================
      FILA
-     ======================================================= */
+     ========================================================= */
 
   function queue(candidate) {
-    /*
-     * Preserva a regra original:
-     *
-     * a nova direção é comparada com a direção
-     * atualmente ativa, não com qualquer direção
-     * futura ainda não aplicada.
-     */
-
     if (isSameDirection(candidate, direction)) {
       return {
         accepted: false,
@@ -109,9 +86,12 @@ export function createDirectionController(initialDirection) {
     };
   }
 
+  /* =========================================================
+     API
+     ========================================================= */
+
   return {
     getDirection,
-    getQueuedDirection,
     applyQueuedDirection,
     queue,
   };

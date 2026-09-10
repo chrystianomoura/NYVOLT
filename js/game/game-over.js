@@ -1,35 +1,17 @@
 /* =========================================================
-   JARAKA — GAME OVER
-   Encerramento e apresentação do fim da partida
-
-   Sequência:
-   1. registra o fim lógico;
-   2. toca o impacto da colisão;
-   3. inicia o lamento do Game Over após 90 ms;
-   4. interrompe input e loop imediatamente;
-   5. preserva a posição final da cobra e do rato;
-   6. executa três piscadas fluidas;
-   7. animationend confirma o término exato;
-   8. cobra e rato desaparecem;
-   9. GAME / OVER entra no mesmo instante.
-
-   Não existe timer para sincronizar a transição visual.
-   A própria animação CSS determina seu término.
-
-   O único timer existente pertence à composição sonora
-   da morte: HIT → GAME OVER.
+   NYVOLT — GAME OVER
    ========================================================= */
 
 /* =========================================================
    CONSTANTES
    ========================================================= */
 
-const DEATH_ANIMATION_NAME = "jaraka-death-blink";
+const DEATH_ANIMATION_NAME = "nyvolt-death-blink";
 
 const GAME_OVER_SOUND_DELAY = 90;
 
 /* =========================================================
-   FACTORY
+   CONTROLLER
    ========================================================= */
 
 export function createGameOverController({
@@ -49,9 +31,9 @@ export function createGameOverController({
 
   let waitingForDeathAnimation = false;
 
-  /* =======================================================
+  /* =========================================================
      INTERFACE
-     ======================================================= */
+     ========================================================= */
 
   function hideInterface() {
     if (overlay) {
@@ -74,36 +56,18 @@ export function createGameOverController({
 
     waitingForDeathAnimation = false;
 
-    /*
-     * Atores desaparecem imediatamente pela regra CSS:
-     *
-     * [data-game-state="game-over"]
-     *
-     * Não existe animação intermediária.
-     */
-
     gameBoard?.setAttribute("data-game-state", "game-over");
-
-    /*
-     * O menu entra no mesmo ciclo da conclusão
-     * da terceira piscada.
-     */
 
     if (overlay) {
       overlay.hidden = false;
     }
 
-    /*
-     * A classe também dispara o pulso cromático
-     * de SCORE e HIGH SCORE.
-     */
-
     gameStage?.classList.add("game-stage--game-over");
   }
 
-  /* =======================================================
-     FIM DA ANIMAÇÃO DE MORTE
-     ======================================================= */
+  /* =========================================================
+     ANIMAÇÃO DE MORTE
+     ========================================================= */
 
   function handleDeathAnimationEnd(event) {
     if (!waitingForDeathAnimation) {
@@ -121,9 +85,9 @@ export function createGameOverController({
     revealInterface();
   }
 
-  /* =======================================================
-     RESET VISUAL
-     ======================================================= */
+  /* =========================================================
+     RESET
+     ========================================================= */
 
   function reset() {
     waitingForDeathAnimation = false;
@@ -135,9 +99,9 @@ export function createGameOverController({
     gameBoard?.removeAttribute("data-game-over-reason");
   }
 
-  /* =======================================================
+  /* =========================================================
      ENCERRAMENTO
-     ======================================================= */
+     ========================================================= */
 
   function end(reason) {
     const gameState = getGameState?.();
@@ -152,23 +116,7 @@ export function createGameOverController({
       return false;
     }
 
-    /*
-     * O estado lógico já confirmou que esta é uma morte
-     * válida.
-     *
-     * Primeiro ouvimos o impacto físico da colisão.
-     */
-
     soundController?.play("hit");
-
-    /*
-     * Pequeno intervalo para o cérebro separar:
-     *
-     * 1. colisão;
-     * 2. derrota.
-     *
-     * O lamento começa 90 ms depois.
-     */
 
     window.setTimeout(() => {
       soundController?.play("gameOver");
@@ -178,18 +126,9 @@ export function createGameOverController({
 
     const gameLoop = getGameLoop?.();
 
-    /*
-     * Congela a rodada imediatamente.
-     */
-
     inputController?.stop();
 
     gameLoop?.stop();
-
-    /*
-     * A partir daqui aguardamos exclusivamente
-     * o animationend da sequência visual de morte.
-     */
 
     waitingForDeathAnimation = true;
 
@@ -197,20 +136,16 @@ export function createGameOverController({
 
     gameBoard?.setAttribute("data-game-state", "dying");
 
-    console.info(`JARAKA — Game Over: ${gameState.getGameOverReason()}`);
+    console.info(`NYVOLT — Game Over: ${gameState.getGameOverReason()}`);
 
     return true;
   }
 
-  /* =======================================================
-     EVENTOS — ANIMAÇÃO
-     ======================================================= */
+  /* =========================================================
+     EVENTOS
+     ========================================================= */
 
   snakeLayer?.addEventListener("animationend", handleDeathAnimationEnd);
-
-  /* =======================================================
-     EVENTOS — BOTÕES
-     ======================================================= */
 
   replayButton?.addEventListener("click", () => {
     onReplay?.();
@@ -220,9 +155,9 @@ export function createGameOverController({
     onExit?.();
   });
 
-  /* =======================================================
+  /* =========================================================
      API
-     ======================================================= */
+     ========================================================= */
 
   return {
     end,

@@ -8,13 +8,6 @@
 
 const MIN_VECTOR_LENGTH = 0.000001;
 const MITER_LIMIT = 1.35;
-
-/*
- * Intensidade máxima do pulso de brilho.
- *
- * 0.32 = aproxima a cor original em 32%
- * do branco no pico da absorção.
- */
 const ENERGY_BRIGHTNESS = 0.32;
 
 /* =========================================================
@@ -88,7 +81,7 @@ function rgbToHex(r, g, b) {
 }
 
 /* =========================================================
-   PULSO DE BRILHO INTERNO
+   ENERGIA
    ========================================================= */
 
 function getEnergyColor(color, energyProgress) {
@@ -126,9 +119,9 @@ export function createSnakeBodyRenderer({
   rows,
   bodyWidth,
 }) {
-  /* =======================================================
+  /* =========================================================
      NORMAIS
-     ======================================================= */
+     ========================================================= */
 
   function getBoundaryNormal(index) {
     const centerPointCount = geometry.getCenterPointCount();
@@ -195,9 +188,9 @@ export function createSnakeBodyRenderer({
     return averagedNormal ?? previousNormal;
   }
 
-  /* =======================================================
+  /* =========================================================
      MITER
-     ======================================================= */
+     ========================================================= */
 
   function getBoundaryOffset(index, radius) {
     const centerPointCount = geometry.getCenterPointCount();
@@ -218,7 +211,6 @@ export function createSnakeBodyRenderer({
     if (index <= 0 || index >= centerPointCount - 1) {
       return {
         x: normal.x * radius,
-
         y: normal.y * radius,
       };
     }
@@ -234,7 +226,6 @@ export function createSnakeBodyRenderer({
     if (!previousValid) {
       return {
         x: normal.x * radius,
-
         y: normal.y * radius,
       };
     }
@@ -246,7 +237,6 @@ export function createSnakeBodyRenderer({
     if (alignment <= MIN_VECTOR_LENGTH) {
       return {
         x: normal.x * radius,
-
         y: normal.y * radius,
       };
     }
@@ -260,9 +250,9 @@ export function createSnakeBodyRenderer({
     };
   }
 
-  /* =======================================================
+  /* =========================================================
      BORDAS
-     ======================================================= */
+     ========================================================= */
 
   function buildBoundaryPoints(widthScale = 1) {
     const centerPoints = geometry.getCenterPoints();
@@ -284,13 +274,11 @@ export function createSnakeBodyRenderer({
 
       leftPoints[index] = {
         x: center.x + offset.x,
-
         y: center.y + offset.y,
       };
 
       rightPoints[index] = {
         x: center.x - offset.x,
-
         y: center.y - offset.y,
       };
     }
@@ -301,9 +289,9 @@ export function createSnakeBodyRenderer({
     };
   }
 
-  /* =======================================================
+  /* =========================================================
      SUPERFÍCIE
-     ======================================================= */
+     ========================================================= */
 
   function buildBodySurface(context, widthScale = 1) {
     const centerPointCount = geometry.getCenterPointCount();
@@ -332,9 +320,9 @@ export function createSnakeBodyRenderer({
     context.fill();
   }
 
-  /* =======================================================
+  /* =========================================================
      EXTREMIDADES
-     ======================================================= */
+     ========================================================= */
 
   function fillBodyCaps(context, widthScale = 1) {
     const centerPoints = geometry.getCenterPoints();
@@ -382,9 +370,9 @@ export function createSnakeBodyRenderer({
     }
   }
 
-  /* =======================================================
+  /* =========================================================
      LIMITES
-     ======================================================= */
+     ========================================================= */
 
   function getBodyBounds() {
     const centerPoints = geometry.getCenterPoints();
@@ -420,9 +408,9 @@ export function createSnakeBodyRenderer({
     };
   }
 
-  /* =======================================================
+  /* =========================================================
      WRAP
-     ======================================================= */
+     ========================================================= */
 
   function getWrapTileRange({ minimum, maximum, viewportSize }) {
     const minimumTile = Math.ceil((-bodyWidth - maximum) / viewportSize);
@@ -437,9 +425,9 @@ export function createSnakeBodyRenderer({
     };
   }
 
-  /* =======================================================
+  /* =========================================================
      PROJEÇÃO
-     ======================================================= */
+     ========================================================= */
 
   function drawBodyProjection({ context, offsetX, offsetY }) {
     context.save();
@@ -462,17 +450,13 @@ export function createSnakeBodyRenderer({
 
     const horizontalRange = getWrapTileRange({
       minimum: bounds.minimumX,
-
       maximum: bounds.maximumX,
-
       viewportSize: columns,
     });
 
     const verticalRange = getWrapTileRange({
       minimum: bounds.minimumY,
-
       maximum: bounds.maximumY,
-
       viewportSize: rows,
     });
 
@@ -488,35 +472,18 @@ export function createSnakeBodyRenderer({
       ) {
         drawBodyProjection({
           context,
-
           offsetX: tileX * columns,
-
           offsetY: tileY * rows,
         });
       }
     }
   }
 
-  /* =======================================================
+  /* =========================================================
      NYVOLT
-     ======================================================= */
+     ========================================================= */
 
   function renderBody({ context, color, energyProgress = 0 }) {
-    /*
-     * O corpo continua sendo desenhado uma única vez.
-     *
-     * Não há:
-     *
-     * - alteração de opacidade;
-     * - alteração de largura;
-     * - segunda camada;
-     * - glow;
-     * - sombra;
-     * - composite "lighter".
-     *
-     * Somente a própria cor recebe mais luminosidade
-     * enquanto energyProgress estiver ativo.
-     */
     const energyColor = getEnergyColor(color, energyProgress);
 
     context.save();
@@ -531,9 +498,9 @@ export function createSnakeBodyRenderer({
     context.restore();
   }
 
-  /* =======================================================
+  /* =========================================================
      RENDERIZAÇÃO
-     ======================================================= */
+     ========================================================= */
 
   function render({
     context,
@@ -563,11 +530,8 @@ export function createSnakeBodyRenderer({
 
     const pointCount = geometry.prepare({
       pathGeometry,
-
       tailStart,
-
       tailLength,
-
       visualGrowth,
     });
 
@@ -584,9 +548,9 @@ export function createSnakeBodyRenderer({
     return true;
   }
 
-  /* =======================================================
+  /* =========================================================
      API
-     ======================================================= */
+     ========================================================= */
 
   return {
     render,

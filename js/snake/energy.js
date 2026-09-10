@@ -1,29 +1,17 @@
 /* =========================================================
    NYVOLT — ENERGY ABSORPTION
-   Controle temporal do pulso interno de energia
    ========================================================= */
 
 /* =========================================================
    TIMELINE
    ========================================================= */
 
-/*
- * Crescimento rápido da descarga.
- */
 const ENERGY_RISE_END = 90;
-
-/*
- * Pequeno instante de intensidade máxima.
- */
 const ENERGY_HOLD_END = 150;
-
-/*
- * Dissipação completa do pulso.
- */
 const ENERGY_END = 480;
 
 /* =========================================================
-   CONSTANTES INTERNAS
+   CONSTANTES
    ========================================================= */
 
 const MIN_VALUE = 0.000001;
@@ -52,14 +40,12 @@ function smoothstep(start, end, value) {
 
 export function createEnergyController() {
   let active = false;
-
   let startedAt = 0;
-
   let elapsed = 0;
 
-  /* =======================================================
+  /* =========================================================
      COLETA
-     ======================================================= */
+     ========================================================= */
 
   function triggerCollection(callback) {
     if (typeof callback !== "function") {
@@ -69,81 +55,53 @@ export function createEnergyController() {
     callback();
   }
 
-  /* =======================================================
-     PROGRESSO DO PULSO
-     ======================================================= */
+  /* =========================================================
+     PROGRESSO
+     ========================================================= */
 
   function getEnergyProgress() {
     if (!active) {
       return 0;
     }
 
-    /*
-     * Entrada rápida.
-     *
-     * 0 → 1
-     */
     if (elapsed <= ENERGY_RISE_END) {
       return smoothstep(0, ENERGY_RISE_END, elapsed);
     }
 
-    /*
-     * Pico curto.
-     */
     if (elapsed <= ENERGY_HOLD_END) {
       return 1;
     }
 
-    /*
-     * Dissipação.
-     *
-     * 1 → 0
-     */
     return 1 - smoothstep(ENERGY_HOLD_END, ENERGY_END, elapsed);
   }
 
-  /* =======================================================
+  /* =========================================================
      ESTADO
-     ======================================================= */
+     ========================================================= */
 
   function getState() {
     return {
       active,
-
       elapsed,
-
       energyProgress: getEnergyProgress(),
     };
   }
 
-  /* =======================================================
+  /* =========================================================
      START
-     ======================================================= */
+     ========================================================= */
 
-  function start({
-    timestamp = performance.now(),
-
-    onCollect,
-  } = {}) {
+  function start({ timestamp = performance.now(), onCollect } = {}) {
     active = true;
-
     startedAt = timestamp;
-
     elapsed = 0;
 
-    /*
-     * A coleta acontece imediatamente.
-     *
-     * O pulso visual começa no mesmo instante
-     * e é renderizado exclusivamente dentro
-     * do corpo da NYVOLT.
-     */
     triggerCollection(onCollect);
   }
 
-  /* =======================================================
+  /* =========================================================
      UPDATE
-     ======================================================= */
+     ========================================================= */
 
   function update(timestamp = performance.now()) {
     if (!active) {
@@ -154,34 +112,28 @@ export function createEnergyController() {
 
     if (elapsed >= ENERGY_END) {
       active = false;
-
       elapsed = 0;
     }
   }
 
-  /* =======================================================
+  /* =========================================================
      RESET
-     ======================================================= */
+     ========================================================= */
 
   function reset() {
     active = false;
-
     startedAt = 0;
-
     elapsed = 0;
   }
 
-  /* =======================================================
+  /* =========================================================
      API
-     ======================================================= */
+     ========================================================= */
 
   return {
     start,
-
     update,
-
     reset,
-
     getState,
   };
 }

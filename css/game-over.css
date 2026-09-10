@@ -1,75 +1,38 @@
 /* =========================================================
-   JARAKA — GAME OVER
-
-   Sequência:
-   1. colisão congela a partida;
-   2. cobra, rato, SCORE e HIGH SCORE permanecem visíveis;
-   3. os quatro piscam 3 vezes, perfeitamente sincronizados;
-   4. ao final exato da terceira piscada:
-      - cobra e rato desaparecem;
-      - SCORE e HIGH SCORE permanecem no HUD;
-      - GAME / OVER aparece imediatamente.
-
-   Regras:
-   - nenhuma animação de saída;
-   - nenhuma pausa após a terceira piscada;
-   - nenhuma alteração de geometria;
-   - nenhuma alteração cromática durante a morte;
-   - SCORE e HIGH SCORE permanecem brancos;
-   - os dois botões possuem exatamente a mesma geometria.
+   NYVOLT — GAME OVER
    ========================================================= */
 
 /* =========================================================
-   SEQUÊNCIA DE MORTE — ATORES
-
-   Cobra e rato recebem o estado diretamente pelo board.
+   MORTE — ATORES
    ========================================================= */
 
 .game-board[data-game-state="dying"] .snake-layer,
-.game-board[data-game-state="dying"] .mouse-food {
-  animation: jaraka-death-blink 1200ms ease-in-out both;
+.game-board[data-game-state="dying"] .energy-orb {
+  animation: nyvolt-death-blink 1200ms ease-in-out both;
 
   pointer-events: none;
 }
 
 /* =========================================================
-   SEQUÊNCIA DE MORTE — HUD
-
-   SCORE e HIGH SCORE estão no HUD, fora do game-board.
-
-   :has() permite que o game-stage reconheça que existe
-   dentro dele um game-board no estado "dying".
-
-   Dessa forma os números recebem exatamente:
-   - o mesmo keyframe;
-   - a mesma duração;
-   - o mesmo easing;
-   - o mesmo instante de início
-   dos atores.
+   MORTE — HUD
    ========================================================= */
 
 .game-stage:has(.game-board[data-game-state="dying"]) #score,
 .game-stage:has(.game-board[data-game-state="dying"]) #high-score {
-  animation: jaraka-death-blink 1200ms ease-in-out both;
+  animation: nyvolt-death-blink 1200ms ease-in-out both;
 }
 
 /* =========================================================
-   ATORES — GAME OVER FINAL
+   GAME OVER — ATORES
    ========================================================= */
 
 .game-board[data-game-state="game-over"] .snake-layer,
-.game-board[data-game-state="game-over"] .mouse-food,
-.game-board[data-game-state="game-over"] .mouse-actor {
+.game-board[data-game-state="game-over"] .energy-orb {
   visibility: hidden !important;
 }
 
 /* =========================================================
-   SCORE / HIGH SCORE — ESTADO FINAL
-
-   Depois das três piscadas, os valores permanecem
-   normalmente visíveis e brancos.
-
-   Não existe pulso cromático posterior.
+   GAME OVER — HUD
    ========================================================= */
 
 .game-stage:has(.game-board[data-game-state="game-over"]) #score,
@@ -110,8 +73,6 @@
 
 /* =========================================================
    CONTEÚDO
-
-   Título e ações compartilham a mesma largura estrutural.
    ========================================================= */
 
 .game-over__content {
@@ -132,16 +93,7 @@
 }
 
 /* =========================================================
-   TÍTULO — GAME / OVER
-
-   O título possui exatamente a mesma largura máxima
-   do bloco de ações.
-
-   Cada linha é dividida em quatro colunas iguais.
-   Cada letra ocupa uma coluna própria.
-
-   Dessa forma a composição não depende de letter-spacing
-   para definir sua largura.
+   TÍTULO
    ========================================================= */
 
 .game-over__title {
@@ -173,17 +125,8 @@
     0 0 22px color-mix(in srgb, var(--theme-color) 30%, transparent),
     0 0 48px color-mix(in srgb, var(--theme-color) 12%, transparent);
 
-  animation: jaraka-game-over-title 560ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: nyvolt-game-over-title 560ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
-
-/* =========================================================
-   LINHAS DO TÍTULO
-
-   GAME e OVER utilizam quatro colunas idênticas.
-
-   A primeira e a última coluna definem as extremidades
-   estruturais da composição.
-   ========================================================= */
 
 .game-over__title-line {
   width: 100%;
@@ -195,7 +138,6 @@
   grid-template-columns: repeat(4, minmax(0, 1fr));
 
   align-items: center;
-
   justify-items: center;
 
   white-space: nowrap;
@@ -228,14 +170,6 @@
 
 /* =========================================================
    BOTÕES
-
-   Os dois possuem exatamente:
-   - mesma largura;
-   - mesma altura;
-   - mesmo padding;
-   - mesma borda;
-   - mesma tipografia;
-   - mesmo box-sizing.
    ========================================================= */
 
 .game-over__button {
@@ -286,8 +220,6 @@
 
   cursor: pointer;
 
-  box-sizing: border-box;
-
   transition:
     transform 160ms ease,
     border-color 160ms ease,
@@ -313,10 +245,6 @@
   transform: translateY(0);
 }
 
-/* =========================================================
-   FOCO
-   ========================================================= */
-
 .game-over__button:focus-visible {
   outline: none;
 
@@ -329,28 +257,10 @@
 }
 
 /* =========================================================
-   MORTE — 3 PISCADAS FLUIDAS
-
-   1200 ms totais.
-   Aproximadamente 400 ms por pulsação.
-
-   Aplicado simultaneamente a:
-   - cobra;
-   - rato;
-   - SCORE;
-   - HIGH SCORE.
-
-   Trabalhamos exclusivamente com opacity:
-   - sem brightness;
-   - sem blur;
-   - sem transform;
-   - sem alteração de cor.
-
-   Ao atingir 100%, o animationend da snake-layer informa
-   ao JavaScript que a sequência terminou.
+   MORTE — ANIMAÇÃO
    ========================================================= */
 
-@keyframes jaraka-death-blink {
+@keyframes nyvolt-death-blink {
   0% {
     opacity: 1;
   }
@@ -384,7 +294,7 @@
    GAME OVER — ENTRADA
    ========================================================= */
 
-@keyframes jaraka-game-over-title {
+@keyframes nyvolt-game-over-title {
   0% {
     opacity: 0;
 
@@ -455,10 +365,10 @@
 
 @media (prefers-reduced-motion: reduce) {
   .game-board[data-game-state="dying"] .snake-layer,
-  .game-board[data-game-state="dying"] .mouse-food,
+  .game-board[data-game-state="dying"] .energy-orb,
   .game-stage:has(.game-board[data-game-state="dying"]) #score,
   .game-stage:has(.game-board[data-game-state="dying"]) #high-score {
-    animation: jaraka-death-blink-reduced 180ms ease-out both;
+    animation: nyvolt-death-blink-reduced 180ms ease-out both;
   }
 
   .game-over__title {
@@ -466,7 +376,7 @@
   }
 }
 
-@keyframes jaraka-death-blink-reduced {
+@keyframes nyvolt-death-blink-reduced {
   from {
     opacity: 1;
   }

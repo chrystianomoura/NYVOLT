@@ -1,6 +1,5 @@
 /* =========================================================
    NYVOLT — SCRIPT
-   Orquestração principal do jogo
    ========================================================= */
 
 import { createSoundController } from "./audio/sound.js";
@@ -15,7 +14,7 @@ import { isSamePosition, willHitSelf } from "./game/collision.js";
 
 import { createDirectionController } from "./game/direction.js";
 
-import { createFoodController } from "./game/food.js";
+import { createOrbSpawnController } from "./game/orb-spawn.js";
 
 import { createGameOverController } from "./game/game-over.js";
 
@@ -38,7 +37,7 @@ import { setTheme, THEMES } from "./game/theme.js";
 import { GAME_MODES, resolveModePosition } from "./game/mode.js";
 
 /* =========================================================
-   TEMA PADRÃO
+   TEMA
    ========================================================= */
 
 setTheme(THEMES.AZULLY);
@@ -96,7 +95,7 @@ const gameOverReplayButton = document.querySelector("#game-over-replay");
 const gameOverExitButton = document.querySelector("#game-over-exit");
 
 /* =========================================================
-   ESTADO INICIAL DA NYVOLT
+   ESTADO INICIAL
    ========================================================= */
 
 const initialSnake = [
@@ -114,7 +113,7 @@ const initialDirection = {
 };
 
 /* =========================================================
-   POSIÇÃO DO ORBE
+   ORBE
    ========================================================= */
 
 const orbPosition = {
@@ -127,7 +126,6 @@ const orbPosition = {
    ========================================================= */
 
 let currentMode = null;
-
 let roundTransitioning = false;
 
 let gameState = createGameState({
@@ -139,14 +137,13 @@ let growthController = createGrowthController();
 let directionController = createDirectionController(initialDirection);
 
 /* =========================================================
-   CONTROLADORES FIXOS
+   CONTROLADORES
    ========================================================= */
 
 const soundController = createSoundController();
 
 const snakeRenderer = createSnakeRenderer({
   board: gameBoard,
-
   layer: snakeLayer,
 });
 
@@ -156,27 +153,23 @@ const orbController = createOrbController({
 
 const scoreController = createScoreController({
   scoreElement,
-
   highScoreElement,
+
+  onHighScore: () => {
+    soundController.play("highScore");
+  },
 });
 
-/* =========================================================
-   CONTROLADORES MUTÁVEIS
-   ========================================================= */
-
 let inputController = null;
-
 let gameLoop = null;
-
 let gameOverController = null;
-
 let startScreenController = null;
 
 /* =========================================================
    ORBE DE ENERGIA
    ========================================================= */
 
-const foodController = createFoodController({
+const orbSpawnController = createOrbSpawnController({
   element: orbElement,
 
   position: orbPosition,
@@ -189,7 +182,7 @@ const foodController = createFoodController({
 });
 
 /* =========================================================
-   UTILITÁRIO — ESPERA
+   ESPERA
    ========================================================= */
 
 function wait(milliseconds) {
@@ -197,10 +190,6 @@ function wait(milliseconds) {
     window.setTimeout(resolve, milliseconds);
   });
 }
-
-/* =========================================================
-   PRÓXIMO FRAME
-   ========================================================= */
 
 function waitForNextFrame() {
   return new Promise((resolve) => {
@@ -278,13 +267,13 @@ function startEnergyAbsorption() {
         return;
       }
 
-      foodController.consumeVisually();
+      orbSpawnController.consumeVisually();
     },
   });
 }
 
 /* =========================================================
-   INPUT — TROCA DE DIREÇÃO
+   INPUT
    ========================================================= */
 
 function handleDirectionChange(candidate) {
@@ -318,38 +307,18 @@ function moveSnake() {
 
   const snake = gameState.getSnake();
 
-  /*
-   * A direção que estava aguardando na fila
-   * passa a ser a direção lógica deste tick.
-   */
   const direction = directionController.applyQueuedDirection();
 
-  /*
-   * Agora uma nova entrada pode ser aceita.
-   */
   inputController?.unlock();
 
   const head = snake[0];
 
-  /* =======================================================
-     PRÓXIMA POSIÇÃO BRUTA
-     ======================================================= */
-
   const rawNextHead = getNextHeadPosition(head, direction);
-
-  /* =======================================================
-     REGRA DO MODO
-     ======================================================= */
 
   const movement = resolveModePosition({
     position: rawNextHead,
-
     mode: currentMode,
   });
-
-  /* =======================================================
-     PAREDE — CLASSIC
-     ======================================================= */
 
   if (movement.hitWall) {
     gameOverController.end("wall");
@@ -357,28 +326,12 @@ function moveSnake() {
     return;
   }
 
-  /*
-   * CLASSIC:
-   * posição normal.
-   *
-   * NO WALL:
-   * posição normalizada no lado oposto.
-   */
   const newHead = movement.position;
-
-  /* =======================================================
-     COLETA DO ORBE
-     ======================================================= */
 
   const willCollectOrb = isSamePosition(
     newHead,
-
-    foodController.getPosition(),
+    orbSpawnController.getPosition(),
   );
-
-  /* =======================================================
-     COLISÃO COM O PRÓPRIO CORPO
-     ======================================================= */
 
   if (
     willHitSelf({
@@ -396,10 +349,6 @@ function moveSnake() {
     return;
   }
 
-  /* =======================================================
-     FILA DE CRESCIMENTO + SCORE
-     ======================================================= */
-
   if (willCollectOrb) {
     growthController.queue();
 
@@ -408,49 +357,17 @@ function moveSnake() {
     soundController.play("eat");
   }
 
-  /* =======================================================
-     SNAPSHOT VISUAL
-     ======================================================= */
-
   gameState.snapshotRenderSnake();
-
-  /* =======================================================
-     MOVIMENTO DOS SEGMENTOS
-     ======================================================= */
 
   const tailBeforeMove = moveSnakeSegments(snake, newHead);
 
-  /* =======================================================
-     CRESCIMENTO LÓGICO
-     ======================================================= */
+  const didGrow = growthController.applyPendingGrowth(snake, tailBeforeMove);
 
-  const didGrow = growthController.applyPendingGrowth(
-    snake,
-
-    tailBeforeMove,
-  );
-
-  /* =======================================================
-     CRESCIMENTO VISUAL
-     ======================================================= */
-
-  const renderSnake = growthController.updateVisualGrowth(
-    snake,
-
-    didGrow,
-  );
+  const renderSnake = growthController.updateVisualGrowth(snake, didGrow);
 
   gameState.setRenderSnake(renderSnake);
 
-  /* =======================================================
-     ORBE — ATUALIZAÇÃO VISUAL
-     ======================================================= */
-
   orbController.update();
-
-  /* =======================================================
-     ABSORÇÃO — VISUAL
-     ======================================================= */
 
   if (willCollectOrb) {
     startEnergyAbsorption();
@@ -476,19 +393,17 @@ function prepareRound(mode) {
 
   inputController?.unlock();
 
-  foodController.resetVisualState();
+  orbSpawnController.resetVisualState();
 
   snakeRenderer.create(gameState.getSnake());
 
   snakeRenderer.render(
     gameState.getRenderSnake(),
-
     gameState.getPreviousRenderSnake(),
-
     0,
   );
 
-  foodController.spawnInitial();
+  orbSpawnController.spawnInitial();
 
   orbController.update();
 
@@ -501,7 +416,7 @@ function prepareRound(mode) {
 }
 
 /* =========================================================
-   INÍCIO DA PARTIDA
+   INÍCIO
    ========================================================= */
 
 async function startGameplay(mode) {
@@ -514,7 +429,6 @@ async function startGameplay(mode) {
   currentMode = mode;
 
   inputController?.stop();
-
   gameLoop?.stop();
 
   prepareRound(mode);
@@ -523,14 +437,6 @@ async function startGameplay(mode) {
 
   gameStage.classList.remove("game-stage--waiting");
 
-  /*
-   * A arena estava no estado de espera quando
-   * o orbe foi criado inicialmente.
-   *
-   * Esperamos o navegador recalcular o layout
-   * visível da arena e então redesenhamos o Canvas
-   * com suas dimensões definitivas.
-   */
   await waitForNextFrame();
 
   orbController.update();
@@ -539,19 +445,11 @@ async function startGameplay(mode) {
 
   gameStage.classList.remove("game-stage--countdown");
 
-  /* =======================================================
-     INPUT
-     ======================================================= */
-
   inputController = createInputController({
     getDirection: () => directionController.getDirection(),
 
     onDirectionChange: handleDirectionChange,
   });
-
-  /* =======================================================
-     LOOP
-     ======================================================= */
 
   gameLoop = createGameLoop({
     onMove: moveSnake,
@@ -559,16 +457,10 @@ async function startGameplay(mode) {
     onRender: (progress) => {
       snakeRenderer.render(
         gameState.getRenderSnake(),
-
         gameState.getPreviousRenderSnake(),
-
         progress,
       );
 
-      /*
-       * O orbe utiliza o timestamp interno do próprio
-       * renderer para produzir pulsação e rotação.
-       */
       orbController.update();
     },
 
@@ -576,7 +468,6 @@ async function startGameplay(mode) {
   });
 
   inputController.start();
-
   gameLoop.start();
 
   roundTransitioning = false;
@@ -604,7 +495,6 @@ function exitToStartScreen() {
   soundController.play("exit");
 
   inputController?.stop();
-
   gameLoop?.stop();
 
   roundTransitioning = false;

@@ -1,40 +1,18 @@
 /* =========================================================
-   JARAKA — SOUND SYSTEM
-   Sistema sonoro sintetizado com Web Audio API
-
-   Sons:
-   - turn
-   - menu
-   - eat
-   - hit
-   - restart
-   - exit
-   - gameOver
+   NYVOLT — SOUND SYSTEM
    ========================================================= */
 
 /* =========================================================
-   CONFIGURAÇÃO GERAL
+   CONFIGURAÇÃO
    ========================================================= */
 
 const MASTER_VOLUME = 0.34;
 
 const DEFAULT_ATTACK = 0.004;
-
 const DEFAULT_RELEASE = 0.08;
 
 /* =========================================================
    PALETA MUSICAL
-
-   Base pentatônica menor:
-
-   A
-   C
-   D
-   E
-   G
-
-   Todos os efeitos utilizam a mesma família tonal para
-   manter uma identidade sonora consistente.
    ========================================================= */
 
 const NOTES = Object.freeze({
@@ -60,25 +38,12 @@ const NOTES = Object.freeze({
 });
 
 /* =========================================================
-   ESTADO INTERNO
+   ESTADO
    ========================================================= */
 
 let audioContext = null;
-
 let masterGain = null;
-
 let isMuted = false;
-
-/*
- * Osciladores atualmente pertencentes ao efeito TURN.
- *
- * O TURN funciona como feedback imediato de input e possui
- * prioridade baixa. Manter referências explícitas permite:
- *
- * - substituir um TURN por outro;
- * - interromper TURN quando EAT começar;
- * - evitar empilhamento de osciladores em curvas rápidas.
- */
 
 const activeTurnSources = new Set();
 
@@ -100,9 +65,7 @@ function getAudioContext() {
   audioContext = new AudioContextClass();
 
   masterGain = audioContext.createGain();
-
   masterGain.gain.value = isMuted ? 0 : MASTER_VOLUME;
-
   masterGain.connect(audioContext.destination);
 
   return audioContext;
@@ -131,7 +94,7 @@ async function ensureAudioReady() {
 }
 
 /* =========================================================
-   ENVELOPE DE VOLUME
+   ENVELOPE
    ========================================================= */
 
 function createGainEnvelope({
@@ -168,7 +131,7 @@ function createGainEnvelope({
 }
 
 /* =========================================================
-   TOM SIMPLES
+   TOM
    ========================================================= */
 
 function playTone({
@@ -206,7 +169,6 @@ function playTone({
   oscillator.connect(gain);
 
   oscillator.start(startTime);
-
   oscillator.stop(startTime + duration + 0.02);
 
   return oscillator;
@@ -254,7 +216,6 @@ function playSweep({
   oscillator.connect(gain);
 
   oscillator.start(startTime);
-
   oscillator.stop(startTime + duration + 0.02);
 
   return oscillator;
@@ -292,7 +253,6 @@ function playNoise({
   const filter = context.createBiquadFilter();
 
   filter.type = "highpass";
-
   filter.frequency.setValueAtTime(highpass, startTime);
 
   const gain = createGainEnvelope({
@@ -305,18 +265,16 @@ function playNoise({
   });
 
   source.connect(filter);
-
   filter.connect(gain);
 
   source.start(startTime);
-
   source.stop(startTime + duration + 0.02);
 
   return source;
 }
 
 /* =========================================================
-   TURN — CONTROLE DE FONTES
+   TURN — FONTES
    ========================================================= */
 
 function removeTurnSource(source) {
@@ -341,13 +299,6 @@ function registerTurnSource(source) {
   );
 }
 
-/*
- * Encerra imediatamente qualquer TURN ainda ativo.
- *
- * stop() pode lançar InvalidStateError caso a fonte já tenha
- * terminado. Por isso cada parada é protegida.
- */
-
 function stopActiveTurn() {
   if (activeTurnSources.size === 0) {
     return;
@@ -357,7 +308,7 @@ function stopActiveTurn() {
     try {
       source.stop();
     } catch {
-      // A fonte já terminou.
+      continue;
     }
   }
 
@@ -366,22 +317,9 @@ function stopActiveTurn() {
 
 /* =========================================================
    TURN
-
-   Micro efeito curto usado quando a intenção válida de
-   mudança de direção é aceita.
-
-   O TURN:
-   - responde imediatamente ao input;
-   - não acumula com outro TURN;
-   - pode ser interrompido por eventos de maior prioridade.
    ========================================================= */
 
 function playTurnSound(context) {
-  /*
-   * Uma curva nova substitui qualquer microefeito de curva
-   * anterior ainda tocando.
-   */
-
   stopActiveTurn();
 
   const now = context.currentTime;
@@ -409,7 +347,6 @@ function playTurnSound(context) {
   });
 
   registerTurnSource(primaryTone);
-
   registerTurnSource(accentTone);
 }
 
@@ -445,10 +382,6 @@ function playMenuSound(context) {
 
 /* =========================================================
    EAT
-
-   Pequena assinatura ascendente de recompensa.
-
-   Possui prioridade sobre TURN.
    ========================================================= */
 
 function playEatSound(context) {
@@ -489,21 +422,73 @@ function playEatSound(context) {
 }
 
 /* =========================================================
+   HIGH SCORE
+   ========================================================= */
+
+function playHighScoreSound(context) {
+  stopActiveTurn();
+
+  const now = context.currentTime;
+
+  const sequence = [
+    {
+      frequency: NOTES.A4,
+      offset: 0,
+      volume: 0.16,
+    },
+    {
+      frequency: NOTES.C5,
+      offset: 0.07,
+      volume: 0.17,
+    },
+    {
+      frequency: NOTES.E5,
+      offset: 0.14,
+      volume: 0.18,
+    },
+    {
+      frequency: NOTES.A5,
+      offset: 0.22,
+      volume: 0.21,
+    },
+  ];
+
+  for (const note of sequence) {
+    playTone({
+      context,
+      frequency: note.frequency,
+      startTime: now + note.offset,
+      duration: 0.14,
+      type: "triangle",
+      volume: note.volume,
+      attack: 0.003,
+      release: 0.1,
+    });
+  }
+
+  playTone({
+    context,
+    frequency: NOTES.A5,
+    startTime: now + 0.23,
+    duration: 0.2,
+    type: "sine",
+    volume: 0.1,
+    attack: 0.006,
+    release: 0.16,
+    detune: 7,
+  });
+
+  playNoise({
+    context,
+    startTime: now + 0.2,
+    duration: 0.08,
+    volume: 0.012,
+    highpass: 3200,
+  });
+}
+
+/* =========================================================
    HIT
-
-   Impacto da cobra contra parede ou contra o próprio corpo.
-
-   Características:
-   - curto;
-   - grave;
-   - seco;
-   - eletrônico;
-   - sem explosão;
-   - sem prolongamento.
-
-   Funciona como ponto inicial da sequência de morte.
-
-   Possui prioridade sobre TURN.
    ========================================================= */
 
 function playHitSound(context) {
@@ -537,10 +522,6 @@ function playHitSound(context) {
 
 /* =========================================================
    RESTART
-
-   Pequena frase ascendente.
-
-   Possui prioridade sobre TURN.
    ========================================================= */
 
 function playRestartSound(context) {
@@ -594,10 +575,6 @@ function playRestartSound(context) {
 
 /* =========================================================
    EXIT
-
-   Frase descendente relacionada ao RESTART.
-
-   Possui prioridade sobre TURN.
    ========================================================= */
 
 function playExitSound(context) {
@@ -640,15 +617,6 @@ function playExitSound(context) {
 
 /* =========================================================
    GAME OVER
-
-   Lamento eletrônico após a colisão.
-
-   Não possui impacto próprio porque o efeito HIT já
-   representa o choque.
-
-   A sequência apenas lamenta a derrota.
-
-   Possui prioridade sobre TURN.
    ========================================================= */
 
 function playGameOverSound(context) {
@@ -702,13 +670,14 @@ function playGameOverSound(context) {
 }
 
 /* =========================================================
-   MAPA DE EFEITOS
+   EFEITOS
    ========================================================= */
 
 const SOUND_PLAYERS = Object.freeze({
   turn: playTurnSound,
   menu: playMenuSound,
   eat: playEatSound,
+  highScore: playHighScoreSound,
   hit: playHitSound,
   restart: playRestartSound,
   exit: playExitSound,
@@ -720,10 +689,6 @@ const SOUND_PLAYERS = Object.freeze({
    ========================================================= */
 
 export function createSoundController() {
-  /* =======================================================
-     EXECUÇÃO
-     ======================================================= */
-
   function executeSound(soundName, context) {
     if (!context || context.state !== "running") {
       return false;
@@ -740,15 +705,6 @@ export function createSoundController() {
     return true;
   }
 
-  /* =======================================================
-     PREPARAÇÃO ASSÍNCRONA
-
-     Só é utilizada quando o AudioContext ainda não está
-     disponível ou precisa ser retomado.
-
-     O caminho normal do gameplay não passa por await.
-     ======================================================= */
-
   async function playAfterReady(soundName) {
     const context = await ensureAudioReady();
 
@@ -759,20 +715,6 @@ export function createSoundController() {
     executeSound(soundName, context);
   }
 
-  /* =======================================================
-     PLAY
-
-     FAST PATH:
-
-     Depois que o AudioContext está desbloqueado e running,
-     o efeito é disparado sincronamente no mesmo fluxo JS que
-     recebeu o comando.
-
-     Isso é especialmente importante para TURN, pois elimina
-     a continuação por Promise/await do caminho normal do
-     feedback de direção.
-     ======================================================= */
-
   function play(soundName) {
     if (isMuted) {
       return;
@@ -782,33 +724,14 @@ export function createSoundController() {
       return;
     }
 
-    /*
-     * Caminho crítico do gameplay.
-     *
-     * Nenhuma Promise.
-     * Nenhum await.
-     * Nenhum microtask intermediário.
-     */
-
     if (audioContext && audioContext.state === "running") {
       executeSound(soundName, audioContext);
 
       return;
     }
 
-    /*
-     * O contexto ainda não foi criado/desbloqueado.
-     *
-     * Essa situação normalmente ocorre apenas no primeiro
-     * contato do usuário com o sistema de áudio.
-     */
-
     void playAfterReady(soundName);
   }
-
-  /* =======================================================
-     MUTE
-     ======================================================= */
 
   function mute() {
     isMuted = true;
@@ -822,10 +745,6 @@ export function createSoundController() {
     masterGain.gain.setValueAtTime(0, audioContext.currentTime);
   }
 
-  /* =======================================================
-     UNMUTE
-     ======================================================= */
-
   function unmute() {
     isMuted = false;
 
@@ -835,10 +754,6 @@ export function createSoundController() {
 
     masterGain.gain.setValueAtTime(MASTER_VOLUME, audioContext.currentTime);
   }
-
-  /* =======================================================
-     TOGGLE MUTE
-     ======================================================= */
 
   function toggleMute() {
     if (isMuted) {
@@ -850,17 +765,9 @@ export function createSoundController() {
     return isMuted;
   }
 
-  /* =======================================================
-     ESTADO
-     ======================================================= */
-
   function getMuted() {
     return isMuted;
   }
-
-  /* =======================================================
-     API
-     ======================================================= */
 
   return {
     play,

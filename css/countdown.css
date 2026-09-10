@@ -1,20 +1,13 @@
 /* =========================================================
-   JARAKA — COUNTDOWN
-   Contagem regressiva de início da partida
-
-   Regras:
-   - ocupa o centro da arena;
-   - usa a cor da personagem escolhida;
-   - cobra e rato permanecem ocultos durante 3-2-1-GO;
-   - ambos aparecem juntos quando a contagem termina.
+   NYVOLT — COUNTDOWN
    ========================================================= */
 
 /* =========================================================
-   ATORES OCULTOS DURANTE A CONTAGEM
+   ATORES
    ========================================================= */
 
 .game-stage--countdown .snake-layer,
-.game-stage--countdown .mouse-food {
+.game-stage--countdown .energy-orb {
   visibility: hidden;
 }
 
@@ -68,7 +61,7 @@
     0 0 20px color-mix(in srgb, var(--theme-color) 36%, transparent),
     0 0 46px color-mix(in srgb, var(--theme-color) 16%, transparent);
 
-  animation: jaraka-countdown-pulse 420ms ease-out both;
+  animation: nyvolt-countdown-pulse 420ms ease-out both;
 }
 
 /* =========================================================
@@ -85,7 +78,7 @@
    ANIMAÇÃO
    ========================================================= */
 
-@keyframes jaraka-countdown-pulse {
+@keyframes nyvolt-countdown-pulse {
   0% {
     opacity: 0;
 

@@ -1,5 +1,5 @@
 /* =========================================================
-   JARAKA — SNAKE MORPHOLOGY
+   NYVOLT — SNAKE MORPHOLOGY
    ========================================================= */
 
 /* =========================================================
@@ -36,9 +36,9 @@ export function createSnakeMorphology({ bodyWidth, initialSnakeLength }) {
   let morphologyGrowth = 0;
   let lastMorphologyTime = null;
 
-  /* =======================================================
+  /* =========================================================
      CRESCIMENTO
-     ======================================================= */
+     ========================================================= */
 
   function getGrowthAmount(snakeLength) {
     return Math.max(0, snakeLength - initialSnakeLength);
@@ -77,9 +77,9 @@ export function createSnakeMorphology({ bodyWidth, initialSnakeLength }) {
     return morphologyGrowth;
   }
 
-  /* =======================================================
+  /* =========================================================
      CAUDA
-     ======================================================= */
+     ========================================================= */
 
   function getTailLength(totalLength, visualGrowth) {
     return Math.min(totalLength, visualGrowth * TAIL_LENGTH_PER_GROWTH);
@@ -110,9 +110,9 @@ export function createSnakeMorphology({ bodyWidth, initialSnakeLength }) {
     return lerp(bodyWidth, getTailEndWidth(visualGrowth), taperProgress);
   }
 
-  /* =======================================================
-     ESTADO
-     ======================================================= */
+  /* =========================================================
+     RESET
+     ========================================================= */
 
   function reset(nextInitialSnakeLength) {
     initialSnakeLength = nextInitialSnakeLength;
@@ -122,17 +122,17 @@ export function createSnakeMorphology({ bodyWidth, initialSnakeLength }) {
     lastMorphologyTime = null;
   }
 
-  /* =======================================================
+  /* =========================================================
      GETTERS
-     ======================================================= */
+     ========================================================= */
 
   function getMinimumVisibleGrowth() {
     return MIN_VISIBLE_GROWTH;
   }
 
-  /* =======================================================
+  /* =========================================================
      API
-     ======================================================= */
+     ========================================================= */
 
   return {
     updateGrowth,
